@@ -93,7 +93,7 @@ def evaluate(model, test_xy):
     print('[%.3fs] Test accuracy: %s' % (elapsed, test_acc))
 
 
-def train(model, train, test, epochs, initial_epoch=0):
+def train(model, train, test, epochs, initial_epoch=0, skip_tflite=False):
     for prev_epoch in range(initial_epoch, epochs):
         epoch = prev_epoch + 1
         # Fit
@@ -103,7 +103,7 @@ def train(model, train, test, epochs, initial_epoch=0):
         evaluate(model, test)
 
         # Save
-        model.save(convert_tflite=True, representative_data=train[0])
+        model.save(convert_tflite=not skip_tflite, representative_data=train[0] if not skip_tflite else None)
 
 
 def get_args():
@@ -111,6 +111,7 @@ def get_args():
     p.add_argument('-e', '--epochs', type=int, default=1, help='Training epochs.')
     p.add_argument('-i', '--initial-epoch', type=int, default=0, help='Initial epoch.')
     p.add_argument('-m', '--model', required=True, help='Model name. One of %s' % MODEL_NAMES)
+    p.add_argument('--skip-tflite', default=False, help='Skip tflite serialization', action="store_true")
     args = p.parse_args()
     assert args.model in MODEL_NAMES
     assert args.epochs > args.initial_epoch
@@ -123,6 +124,7 @@ def main():
     model_name = args.model
     initial_epoch = args.initial_epoch
     epochs = args.epochs
+    skip_tflite = args.skip_tflite
 
     # Data
     (train_images, train_labels), (test_images, test_labels) = get_data()
@@ -132,7 +134,8 @@ def main():
     model.summary()
 
     # Train
-    train(model, (train_images, train_labels), (test_images, test_labels), epochs, initial_epoch=initial_epoch)
+    train(model, (train_images, train_labels), (test_images, test_labels), epochs, initial_epoch=initial_epoch,
+          skip_tflite=skip_tflite)
 
 
 if __name__ == '__main__':
