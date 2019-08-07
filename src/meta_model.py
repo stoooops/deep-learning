@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+from datetime import datetime
 
 import tensorflow as tf
 from tensorflow import keras
@@ -8,7 +9,7 @@ from tensorflow import keras
 import numpy as np
 
 from src.utils.logger import HuliLogging
-from src.utils.file_utils import MODELS_DIR
+from src.utils.file_utils import MODELS_DIR, TMP_DIR
 
 logger = HuliLogging.get_logger(__name__)
 
@@ -37,6 +38,9 @@ def _real_to_scaled(real_value, mean, std):
 
 
 class MetaModel:
+    """
+    API wrapper around various tensorflow libraries / add-ons. Supports: keras, tflite
+    """
 
     def __init__(self, name, epoch=UNKNOWN_EPOCH, keras_model=None):
         self.name = name
@@ -46,6 +50,7 @@ class MetaModel:
             self.mode = MODE_KERAS_MODEL
         else:
             self.mode = MODE_NONE
+        self.keras_tensorboard_callback = None
 
         self.tflite_interpreter = None
         self.tflite_input_detail = self.tflite_in_mean = self.tflite_in_std = self.tflite_in_index = None
@@ -61,6 +66,12 @@ class MetaModel:
 
     def fit(self, *argv, **kwargs):
         assert self.keras_model is not None
+        if self.keras_tensorboard_callback is None:
+            log_dir = os.path.join(TMP_DIR, 'tensorboard/' + datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
+            self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir)
+        callbacks_param = kwargs.get('callbacks', [])
+        callbacks_param.append(self.keras_tensorboard_callback)
+        kwargs['callbacks'] = callbacks_param
         result = self.keras_model.fit(*argv, **kwargs)
         self.epoch = kwargs.get('epochs', 1)
         return result
