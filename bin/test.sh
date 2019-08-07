@@ -17,4 +17,4 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo
 echo
 
-"${SCRIPT_DIR}"/inference.sh -m $1 -e "${EPOCHS}" -w 10 -t 10 -r 1 -i
+"${SCRIPT_DIR}"/inference.sh -m $1 -e "${EPOCHS}" -w 10 -t 10 -r 1

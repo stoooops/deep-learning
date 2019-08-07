@@ -4,16 +4,16 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 # TensorFlow and tf.keras
 import tensorflow as tf
-from tensorflow import keras
 
 # Helper libraries
 import os
+import sys
 import time
 import argparse
-import numpy as np
 from src.logger import HuliLogging
 
 from src.data.cifar100 import CIFAR_100_CLASSES, load_cifar100_data
+from src.meta_model import MetaModel
 from src.models.basic import construct_basic_model
 from src.models.conv import construct_conv_model
 from src.models.resnet50 import construct_resnet50_model
@@ -83,9 +83,7 @@ def get_model(name, epoch):
         else:
             assert name in MODEL_NAMES
     else:
-        filepath = get_filepath(name, epoch)
-        print('Loading %s...' % filepath)
-        return keras.models.load_model(filepath)
+        return MetaModel.from_h5(name, epoch)
 
 
 def evaluate(model, test_xy):
@@ -105,7 +103,7 @@ def train(model, train, test, epochs, initial_epoch=0):
         evaluate(model, test)
 
         # Save
-        model.save()
+        model.save(convert_tflite=True, representative_data=train[0])
 
 
 def get_args():
@@ -138,4 +136,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    logger.info('')
+    logger.info('')
+    logger.info('> ' + ' '.join(sys.argv))
+    try:
+        main()
+    except Exception as e:
+        logger.exception(e)
