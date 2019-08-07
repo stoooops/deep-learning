@@ -10,14 +10,14 @@ import os
 import sys
 import time
 import argparse
-from src.logger import HuliLogging
+from src.utils.logger import HuliLogging
 
 from src.data.cifar100 import CIFAR_100_CLASSES, load_cifar100_data
 from src.meta_model import MetaModel
 from src.models.basic import construct_basic_model
 from src.models.conv import construct_conv_model
 from src.models.resnet50 import construct_resnet50_model
-from src.utils import MODELS_DIR
+from src.utils.file_utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
 

@@ -7,8 +7,8 @@ from tensorflow import keras
 
 import numpy as np
 
-from src.logger import HuliLogging
-from src.utils import MODELS_DIR
+from src.utils.logger import HuliLogging
+from src.utils.file_utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
 

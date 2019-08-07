@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import tensorflow as tf
+
 from tensorflow import keras
 
 from src.meta_model import MetaModel

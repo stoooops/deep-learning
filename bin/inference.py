@@ -4,8 +4,8 @@ import sys
 import time
 import argparse
 
-from src.logger import HuliLogging
-from src.train import get_data, get_model, MODEL_NAMES
+from src.utils.logger import HuliLogging
+from bin.train import get_data, get_model, MODEL_NAMES
 
 import tensorflow as tf
 
