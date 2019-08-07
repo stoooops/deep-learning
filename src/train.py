@@ -21,9 +21,9 @@ from src.utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
 
-print('=' * 30)
+print('=' * 50)
 print('tensorflow-%s' % tf.__version__)
-print('=' * 30)
+print('=' * 50)
 
 
 INPUT_SHAPE = (32, 32, 3)
@@ -42,8 +42,6 @@ def get_filepath(model_name, epoch):
 
 def get_data():
     (train_images, train_labels), (test_images, test_labels) = load_cifar100_data()
-    train_images = train_images / 255.0
-    test_images = test_images / 255.0
     assert INPUT_SHAPE == train_images.shape[1:]
     print('Train:', train_images.shape)
     print('Test: ', test_images.shape)
@@ -97,13 +95,7 @@ def evaluate(model, test_xy):
     print('[%.3fs] Test accuracy: %s' % (elapsed, test_acc))
 
 
-def save(model_name, model, epoch):
-    filepath = get_filepath(model_name, epoch)
-    print('Saving %s...' % filepath)
-    model.save(filepath)
-
-
-def train(model_name, model, train, test, epochs, initial_epoch=0):
+def train(model, train, test, epochs, initial_epoch=0):
     for prev_epoch in range(initial_epoch, epochs):
         epoch = prev_epoch + 1
         # Fit
@@ -113,7 +105,7 @@ def train(model_name, model, train, test, epochs, initial_epoch=0):
         evaluate(model, test)
 
         # Save
-        save(model_name, model, epoch)
+        model.save()
 
 
 def get_args():
@@ -138,12 +130,11 @@ def main():
     (train_images, train_labels), (test_images, test_labels) = get_data()
 
     # Model
-    model = get_model(args.model, initial_epoch)
+    model = get_model(model_name, initial_epoch)
     model.summary()
 
     # Train
-    train(model_name, model, (train_images, train_labels), (test_images, test_labels), epochs,
-          initial_epoch=initial_epoch)
+    train(model, (train_images, train_labels), (test_images, test_labels), epochs, initial_epoch=initial_epoch)
 
 
 if __name__ == '__main__':
