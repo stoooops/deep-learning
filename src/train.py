@@ -13,6 +13,7 @@ import argparse
 import numpy as np
 from src.logger import HuliLogging
 
+from src.data.cifar100 import CIFAR_100_CLASSES, load_cifar100_data
 from src.models.basic import construct_basic_model
 from src.models.conv import construct_conv_model
 from src.models.resnet50 import construct_resnet50_model
@@ -26,24 +27,7 @@ print('=' * 30)
 
 
 INPUT_SHAPE = (32, 32, 3)
-CLASS_NAMES = np.array([
-        'apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle',
-        'bicycle', 'bottle', 'bowl', 'boy', 'bridge', 'bus', 'butterfly', 'camel',
-        'can', 'castle', 'caterpillar', 'cattle', 'chair', 'chimpanzee', 'clock',
-        'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur',
-        'dolphin', 'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster',
-        'house', 'kangaroo', 'keyboard', 'lamp', 'lawn_mower', 'leopard', 'lion',
-        'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle', 'mountain', 'mouse',
-        'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear',
-        'pickup_truck', 'pine_tree', 'plain', 'plate', 'poppy', 'porcupine',
-        'possum', 'rabbit', 'raccoon', 'ray', 'road', 'rocket', 'rose',
-        'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper', 'snail', 'snake',
-        'spider', 'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table',
-        'tank', 'telephone', 'television', 'tiger', 'tractor', 'train', 'trout',
-        'tulip', 'turtle', 'wardrobe', 'whale', 'willow_tree', 'wolf', 'woman',
-        'worm'
-    ])
-OUTPUT_LEN = len(CLASS_NAMES)
+OUTPUT_LEN = len(CIFAR_100_CLASSES)
 
 MODEL_BASIC = 'basic'
 MODEL_CONV = 'conv'
@@ -57,15 +41,13 @@ def get_filepath(model_name, epoch):
 
 
 def get_data():
-    cifar100 = keras.datasets.cifar100
-
-    (train_images, train_labels), (test_images, test_labels) = cifar100.load_data()
+    (train_images, train_labels), (test_images, test_labels) = load_cifar100_data()
     train_images = train_images / 255.0
     test_images = test_images / 255.0
     assert INPUT_SHAPE == train_images.shape[1:]
     print('Train:', train_images.shape)
     print('Test: ', test_images.shape)
-    print('classes:', len(CLASS_NAMES))
+    print('classes:', len(CIFAR_100_CLASSES))
     return (train_images, train_labels), (test_images, test_labels)
 
 
@@ -108,17 +90,6 @@ def get_model(name, epoch):
         return keras.models.load_model(filepath)
 
 
-def get_args():
-    p = argparse.ArgumentParser()
-    p.add_argument('-e', '--epochs', type=int, default=1, help='Training epochs.')
-    p.add_argument('-i', '--initial-epoch', type=int, default=0, help='Initial epoch.')
-    p.add_argument('-m', '--model', required=True, help='Model name. One of %s' % MODEL_NAMES)
-    args = p.parse_args()
-    assert args.model in MODEL_NAMES
-    assert args.epochs > args.initial_epoch
-    return args
-
-
 def evaluate(model, test_xy):
     now = time.time()
     test_loss, test_acc = model.evaluate(*test_xy)
@@ -143,6 +114,18 @@ def train(model_name, model, train, test, epochs, initial_epoch=0):
 
         # Save
         save(model_name, model, epoch)
+
+
+def get_args():
+    p = argparse.ArgumentParser()
+    p.add_argument('-e', '--epochs', type=int, default=1, help='Training epochs.')
+    p.add_argument('-i', '--initial-epoch', type=int, default=0, help='Initial epoch.')
+    p.add_argument('-m', '--model', required=True, help='Model name. One of %s' % MODEL_NAMES)
+    args = p.parse_args()
+    assert args.model in MODEL_NAMES
+    assert args.epochs > args.initial_epoch
+    return args
+
 
 def main():
     # Args
