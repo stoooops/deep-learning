@@ -16,6 +16,7 @@ from src.logger import HuliLogging
 from src.models.basic import construct_basic_model
 from src.models.conv import construct_conv_model
 from src.models.resnet50 import construct_resnet50_model
+from src.utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
 
@@ -48,8 +49,6 @@ MODEL_BASIC = 'basic'
 MODEL_CONV = 'conv'
 MODEL_RESNET50 = 'resnet50'
 MODEL_NAMES = [MODEL_BASIC, MODEL_CONV, MODEL_RESNET50]
-
-MODELS_DIR = '../models/'
 
 
 def get_filepath(model_name, epoch):

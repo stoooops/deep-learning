@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import logging
 from logging.handlers import TimedRotatingFileHandler
+from src.utils import SRC_DIR
 
 # use WARN instead of WARNING and FATAL instead of CRITICAL
 # This way our formatters can pad width at 5 characters instead of 8,
@@ -11,7 +13,7 @@ logging._levelToName[logging.WARNING] = 'WARN'
 logging._levelToName[logging.CRITICAL] = 'FATAL'
 
 
-FILENAME = '../tmp/huli.log'
+FILENAME = os.path.join(SRC_DIR, '../tmp/huli.log')
 
 
 class HuliLogging:

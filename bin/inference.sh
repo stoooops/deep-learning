@@ -1,0 +1,5 @@
+#!/bin/bash
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+PYTHONPATH=${SCRIPT_DIR}/.. ${SCRIPT_DIR}/../src/inference.py $@
