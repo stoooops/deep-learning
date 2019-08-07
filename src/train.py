@@ -13,6 +13,10 @@ import argparse
 import numpy as np
 from src.logger import HuliLogging
 
+from src.models.basic import construct_basic_model
+from src.models.conv import construct_conv_model
+from src.models.resnet50 import construct_resnet50_model
+
 logger = HuliLogging.get_logger(__name__)
 
 print('=' * 30)
@@ -71,93 +75,19 @@ def model_compile(model):
 
 
 def model_basic():
-    model = keras.Sequential([
-        keras.layers.Flatten(input_shape=INPUT_SHAPE),
-        keras.layers.Dense(128, activation=tf.nn.relu),
-        keras.layers.Dense(OUTPUT_LEN, activation=tf.nn.softmax)
-    ])
+    model = construct_basic_model(INPUT_SHAPE, OUTPUT_LEN)
     model_compile(model)
     return model
 
 
-def model_conv(hidden_size=2):
-    # UpSampling2D (using nearest neighber) is not supported yet.
-    # We should implement it by myself.
-    def UpSampling2D(scale=(2, 2)):
-        if isinstance(scale, int):
-            scale = (scale, scale)
-
-        def upsampling(x):
-            shape = x.shape
-            x = keras.layers.Concatenate(-2)([x] * scale[0])
-            x = keras.layers.Reshape([shape[1] * scale[0], shape[2], shape[3]])(x)
-            x = keras.layers.Concatenate(-1)([x] * scale[1])
-            x = keras.layers.Reshape([shape[1] * scale[0], shape[2] * scale[1], shape[3]])(x)
-            return x
-
-        return upsampling
-
-    inputs = keras.layers.Input(shape=INPUT_SHAPE)
-
-    x = keras.layers.Conv2D(16, (3, 3), padding='same')(inputs)
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.Activation('relu')(x)
-
-    x = keras.layers.MaxPooling2D((2, 2), padding='same')(x)
-    x = keras.layers.Conv2D(8, (3, 3), padding='same')(x)
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.Activation('relu')(x)
-
-    x = keras.layers.MaxPooling2D((2, 2), padding='same')(x)
-    x = keras.layers.Conv2D(8, (3, 3), padding='same')(x)
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.Activation('relu')(x)
-
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(OUTPUT_LEN, activation='softmax', name='fc%d' % OUTPUT_LEN)(x)
-    model = keras.models.Model(inputs, x)
-    model.summary()
+def model_conv():
+    model = construct_conv_model(INPUT_SHAPE, OUTPUT_LEN)
     model_compile(model)
-
     return model
 
 
-    encoded = keras.layers.Dense(hidden_size)(x)
-
-    x = keras.layers.Dense(7 * 7 * 8)(encoded)
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.Activation('relu')(x)
-
-
-    x = keras.layers.Reshape((7, 7, 8))(x)
-    x = UpSampling2D()(x)
-    # x = keras.layers.UpSampling2D(2, interpolation='bilinear')(x)
-    x = keras.layers.Conv2D(8, (3, 3), padding='same')(x)
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.Activation('relu')(x)
-    x = UpSampling2D()(x)
-    # x = keras.layers.UpSampling2D(2, interpolation='bilinear')(x)
-    x = keras.layers.Conv2D(16, (3, 3), padding='same')(x)
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.Activation('relu')(x)
-
-    x = keras.layers.Conv2D(100, (28, 28), strides=(28, 28), padding='same')(x)
-
-    model = keras.models.Model(inputs, x)
-    model.summary()
-    model_compile(model)
-
-    return model
-
-
-def model_resnet():
-    model = keras.models.Sequential()
-
-    resnet50 = keras.applications.resnet50.ResNet50(include_top=False, input_shape=INPUT_SHAPE, pooling='avg')
-    resnet50.summary()
-    model.add(resnet50)
-
-    model.add(keras.layers.Dense(OUTPUT_LEN, activation='softmax', name='fc%d' % OUTPUT_LEN))
+def model_resnet50():
+    model = construct_resnet50_model(INPUT_SHAPE, OUTPUT_LEN)
     model_compile(model)
     return model
 
@@ -170,7 +100,7 @@ def get_model(name, epoch):
         elif name == MODEL_CONV:
             return model_conv()
         elif name == MODEL_RESNET50:
-            return model_resnet()
+            return model_resnet50()
         else:
             assert name in MODEL_NAMES
     else:
