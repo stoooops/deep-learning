@@ -53,6 +53,8 @@ class MetaModel:
         self.tflite_quantize_in = self.tflite_quantize_out = None
         self.resized = False
 
+    # TRAIN
+
     def compile(self, *args, **kwargs):
         assert self.keras_model is not None
         return self.keras_model.compile(*args, **kwargs)
@@ -62,6 +64,8 @@ class MetaModel:
         result = self.keras_model.fit(*argv, **kwargs)
         self.epoch = kwargs.get('epochs', 1)
         return result
+
+    # INFER / TEST
 
     def evaluate(self, *args, **kwargs):
         assert self.keras_model is not None
@@ -96,25 +100,29 @@ class MetaModel:
         else:
             return ERROR_INVALID_STATE, None
 
+    # LOAD
+
     def load_keras_model(self):
         if self.keras_model is not None:
             return 0
 
         self.unload_tflite_interpreter()
+
         filepath = self.filepath_h5()
+        logger.debug('%s Loading keras model from %s...', self.name, filepath)
         self.keras_model = keras.models.load_model(filepath)
         self.mode = MODE_KERAS_MODEL
 
         return 0
 
     def unload_keras_model(self):
-        logger.info('%s Deleting keras model...', self.name)
+        logger.debug('%s Deleting keras model...', self.name)
         del self.keras_model
         self.keras_model = None
 
     def reload_keras_model(self):
         assert self.keras_model is not None
-        logger.info('%s Reloading keras model...', self.name)
+        logger.debug('%s Reloading keras model...', self.name)
         del self.keras_model
         self.keras_model = None
         return self.load_keras_model()
@@ -124,9 +132,11 @@ class MetaModel:
             return 0
 
         self.unload_keras_model()
-        tflite_filepath = self.filepath_tflite()
-        if os.path.exists(tflite_filepath):
-            self.tflite_interpreter = tf.lite.Interpreter(model_path=tflite_filepath)
+
+        filepath = self.filepath_tflite()
+        logger.debug('%s Loading tflite interpreter from %s...', self.name, filepath)
+        if os.path.exists(filepath):
+            self.tflite_interpreter = tf.lite.Interpreter(model_path=filepath)
             self.tflite_interpreter.allocate_tensors()
 
             self.tflite_input_detail = self.tflite_interpreter.get_input_details()[0]
@@ -153,18 +163,20 @@ class MetaModel:
 
     def unload_tflite_interpreter(self):
         if self.tflite_interpreter is not None:
-            logger.info('%s Deleting tflite interpreter...', self.name)
+            logger.debug('%s Deleting tflite interpreter...', self.name)
             del self.tflite_interpreter
             self.tflite_interpreter = None
             self.tflite_input_detail = self.tflite_in_mean = self.tflite_in_std = self.tflite_in_index = None
             self.tflite_output_detail = self.tflite_out_mean = self.tflite_out_std = self.tflite_out_index = None
             self.tflite_quantize_in = self.tflite_quantize_out = None
 
+    # SAVE
+
     def save(self, convert_tflite=False, representative_data=None, **kwargs):
         # save keras model
         assert self.keras_model is not None
         h5_filepath = self.filepath_h5()
-        logger.info('Saving %s...', h5_filepath)
+        logger.info('%s Saving keras model to %s...', self.name, h5_filepath)
         self.keras_model.save(h5_filepath, **kwargs)
 
         # convert to tflite and save
@@ -200,19 +212,24 @@ class MetaModel:
         logger.info('%s Converting to tflite model...', self.name)
         tflite_model = converter.convert()
         tflite_filepath = self.filepath_tflite()
-        logger.info('%s Writing tflite model to %s...', self.name, tflite_filepath)
+        logger.info('%s Saving tflite model to %s...', self.name, tflite_filepath)
         with open(tflite_filepath, 'wb') as o_:
             o_.write(tflite_model)
 
         if self.keras_model is not None:
             # now we need to reload the keras model, else fit() function will fail with strange errors
+            # because the Session gets messed up when we do this converter stuff
             self.reload_keras_model()
 
         return 0
 
+    # SUMMARIZE
+
     def summary(self, *args, **kwargs):
         assert self.keras_model is not None
         return self.keras_model.summary(*args, **kwargs)
+
+    # FILENAMES
 
     def filename_no_ext(self):
         return '%s_%03d' % (self.name, self.epoch)
@@ -228,6 +245,8 @@ class MetaModel:
 
     def filepath_tflite(self):
         return os.path.join(MODELS_DIR, self.filename_tflite())
+
+    # FACTORIES
 
     @staticmethod
     def from_h5(name, epoch):
