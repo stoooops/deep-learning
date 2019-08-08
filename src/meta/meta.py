@@ -4,7 +4,6 @@ import os
 
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
 
 from src.meta.constants import UNKNOWN_EPOCH
 from src.meta.errors import *
@@ -12,6 +11,7 @@ from src.meta.keras import KerasModel
 from src.meta.tensorflow import TensorFlowModel
 from src.meta.tflite import TfLiteModel
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
+from src.utils.cuda_utils import gpu_info
 from src.utils.logger import HuliLogging
 
 
@@ -94,8 +94,11 @@ class MetaModel(AbstractTensorModel):
         return self.delegate.save(filepath, **kwargs)
 
     def dump(self):
+        gpu_info()
+
         logger.debug('%s mode = %s', self.name, self.mode)
         logger.debug('%s epoch = %s', self.name, self.epoch)
+
         ret = 0
         if self.mode != TensorApi.NONE:
             ret = self.delegate.dump()
