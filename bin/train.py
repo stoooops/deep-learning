@@ -15,9 +15,10 @@ from src.utils.logger import HuliLogging
 from src.data.cifar100 import CIFAR_100_CLASSES, load_cifar100_data
 from src.meta.meta import MetaModel, MetaModelFactory
 from src.meta.tensor_apis import TensorApi
-from src.models.basic import construct_basic_model
-from src.models.conv import construct_conv_model
-from src.models.resnet50 import construct_resnet50_model
+from src.models.basic import construct_basic_model, NAME as NAME_BASIC
+from src.models.batchn import construct_batchn_model, NAME as NAME_BATCHN
+from src.models.conv import construct_conv_model, NAME as NAME_CONV
+from src.models.resnet50 import construct_resnet50_model, NAME as NAME_RESNET50
 from src.utils.file_utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
@@ -31,10 +32,7 @@ print('=' * 50)
 INPUT_SHAPE = (32, 32, 3)
 OUTPUT_LEN = len(CIFAR_100_CLASSES)
 
-MODEL_BASIC = 'basic'
-MODEL_CONV = 'conv'
-MODEL_RESNET50 = 'resnet50'
-MODEL_NAMES = [MODEL_BASIC, MODEL_CONV, MODEL_RESNET50]
+MODEL_NAMES = [NAME_BASIC, NAME_BATCHN, NAME_CONV, NAME_RESNET50]
 
 
 def get_filepath(model_name, epoch):
@@ -61,6 +59,12 @@ def model_basic():
     return 0, model
 
 
+def model_batchn():
+    model = construct_batchn_model(INPUT_SHAPE, OUTPUT_LEN)
+    model_compile(model)
+    return 0, model
+
+
 def model_conv():
     model = construct_conv_model(INPUT_SHAPE, OUTPUT_LEN)
     model_compile(model)
@@ -76,11 +80,13 @@ def model_resnet50():
 def get_model(name, epoch):
     if epoch == 0:
         logger.info('Creating new %s model...', name)
-        if name == MODEL_BASIC:
+        if name == NAME_BASIC:
             return model_basic()
-        elif name == MODEL_CONV:
+        if name == NAME_BATCHN:
+            return model_batchn()
+        elif name == NAME_CONV:
             return model_conv()
-        elif name == MODEL_RESNET50:
+        elif name == NAME_RESNET50:
             return model_resnet50()
         else:
             assert name in MODEL_NAMES

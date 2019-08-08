@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 
-import tensorflow as tf
+
 from tensorflow import keras
 
 from src.meta.keras import KerasModel
 from src.meta.meta import MetaModel
 
 
-NAME = 'basic'
+NAME = 'batchn'
 
 
-def construct_basic_model(input_shape, output_length):
+def construct_batchn_model(input_shape, output_length):
     inputs = keras.layers.Input(shape=input_shape, name=NAME+str(0))
-    x = keras.layers.Flatten(input_shape=input_shape, name=NAME+str(1))(inputs)
-    x = keras.layers.Dense(output_length, activation=tf.nn.softmax, name=NAME+str(2))(x)
+
+    x = keras.layers.BatchNormalization()(inputs)
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(output_length, activation='softmax', name='fc%d' % output_length)(x)
     keras_model = keras.models.Model(inputs, x, name=NAME)
 
     keras_model = KerasModel(NAME, keras_model, epoch=0)
