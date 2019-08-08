@@ -1,0 +1,160 @@
+#!/usr/bin/env python
+
+import os
+
+import tensorflow as tf
+from tensorflow import keras
+
+from datetime import datetime
+from src.meta.constants import UNKNOWN_EPOCH
+from src.meta.errors import *
+from src.meta.tensor_apis import AbstractTensorModel, TensorApi
+from src.utils.logger import HuliLogging
+
+from src.utils.file_utils import MODELS_DIR, TMP_DIR
+
+logger = HuliLogging.get_logger(__name__)
+
+
+class KerasModel(AbstractTensorModel):
+
+    def __init__(self, name, keras_model, epoch=UNKNOWN_EPOCH):
+        """
+        :type name: str
+        :type keras_model: keras.Model
+        :type epoch: int
+        """
+        super().__init__(name)
+
+        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 1)
+        self.epoch = epoch
+
+        # keras Model
+        assert keras_model is not None and isinstance(keras_model, keras.Model)
+        self.keras_model = keras_model
+
+        # tensorboard callback
+        tensorboard_log_dir = os.path.join(TMP_DIR,
+                                          'tensorboard/' + datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
+        self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensorboard_log_dir)
+
+        self.mode = TensorApi.KERAS
+
+    def compile(self, *argv, **kwargs):
+        try:
+            self.keras_model.compile(*argv, **kwargs)
+        except ValueError as e:
+            logger.exception(e)
+            return ERROR_TF_META_CAUGHT_EXCEPTION
+        return 0
+
+    def fit(self, *argv, **kwargs):
+        assert self.keras_model is not None
+
+        # attach tensorboard callback
+        kwargs['callbacks'] = kwargs.get('callbacks', []) + [self.keras_tensorboard_callback]
+
+        # Call fit
+        ret, history = 0, None
+        try:
+            # TODO Add checkpoint callback https://www.tensorflow.org/tutorials/keras/save_and_restore_models
+            history = self.keras_model.fit(*argv, **kwargs)
+        except RuntimeError as e:
+            logger.exception('Model was never compiled: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        except ValueError as e:
+            logger.exception('Mismatch between the provided input data and what the model expects: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        except Exception as e:
+            logger.exception('Undocumented error: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+
+        epochs = kwargs.get('epochs', 1)
+        self.epoch = epochs
+        return ret, history
+
+    def evaluate(self, *argv, **kwargs):
+        ret, result = 0, None
+        try:
+            result = self.keras_model.evaluate(*argv, **kwargs)
+        except ValueError as e:
+            logger.exception('Invalid arguments: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        except Exception as e:
+            logger.exception('Undocumented error: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        return ret, result
+
+    def predict(self, *argv, **kwargs):
+        ret, y = 0, None
+        try:
+            y = self.keras_model.predict(*argv, **kwargs)
+        except ValueError as e:
+            logger.exception('Mismatch between the provided input data and the model\'s expectations, '
+                             'or in case a stateful model receives a number of samples that is not a '
+                             'multiple of the batch size: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        return ret, y
+
+    def save(self, *argv, **kwargs):
+        # TODO auto determine filepath from epoch
+        assert len(argv) == 1
+        filepath = argv[0]
+        logger.info('%s Saving keras model to %s...', self.name, filepath)
+
+        ret = 0
+        try:
+            self.keras_model.save(filepath, **kwargs)
+        except Exception as e:
+            logger.exception('Undocumented exception: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+
+        return ret
+
+    def dump(self):
+        input_tensor = self.keras_model.input
+        logger.debug('%s Input tensor: %s', self.name, input_tensor)
+
+        input_tensor_name = self.keras_model.input.name.split(':')[0]
+        logger.debug('%s Input tensor name: %s', self.name, input_tensor_name)
+
+        output_tensor = self.keras_model.output
+        logger.debug('%s Output tensor: %s', self.name, output_tensor)
+
+        output_tensor_name = self.keras_model.output.name.split(':')[0]
+        logger.debug('%s Output tensor name: %s', self.name, output_tensor_name)
+
+    def freeze_session(self, keep_var_names=None, output_names=None, clear_devices=True):
+        """
+        Freezes the state of a session into a pruned computation graph.
+
+        Creates a new computation graph where variable nodes are replaced by
+        constants taking their current value in the session. The new graph will be
+        pruned so subgraphs that are not necessary to compute the requested
+        outputs are removed.
+        @param keep_var_names A list of variable names that should not be frozen,
+                              or None to freeze all the variables in the graph.
+        @param output_names Names of the relevant graph outputs.
+        @param clear_devices Remove the device directives from the graph for better portability.
+        @return The frozen graph definition.
+        """
+        # Refer https://stackoverflow.com/a/45466355/2079993
+        session = keras.backend.get_session()
+        graph = session.graph
+        with graph.as_default():
+            freeze_var_names = list(set(v.op.name for v in tf.global_variables()).difference(keep_var_names or []))
+            # tweaked here
+            output_names = output_names or [out.op.name for out in self.keras_model.outputs]
+            output_names += [v.op.name for v in tf.global_variables()]
+            # Graph -> GraphDef ProtoBuf
+            input_graph_def = graph.as_graph_def()
+            if clear_devices:
+                for node in input_graph_def.node:
+                    node.device = ""
+            frozen_graph = tf.graph_util.convert_variables_to_constants(session, input_graph_def, output_names,
+                                                                        freeze_var_names)
+
+            logger.info('%s Saving frozen graph to %s...', self.name, self.filepath_pb(self.epoch))
+            tf.train.write_graph(frozen_graph, MODELS_DIR, self.filename_pb(self.epoch), as_text=False)
+
+        return 0

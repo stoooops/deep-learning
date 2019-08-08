@@ -66,6 +66,9 @@ class HuliLogging:
         # keep track of all the loggers
         HuliLogging._LOGGERS[name] = logger
 
+        # Don't let tensorflow duplicate this logger
+        logger.propagate = False
+
         return logger
 
     @staticmethod

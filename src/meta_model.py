@@ -92,9 +92,9 @@ class MetaModel:
 
     # INFER / TEST
 
-    def evaluate(self, *args, **kwargs):
+    def evaluate(self, *argv, **kwargs):
         assert self.keras_model is not None
-        return self.keras_model.evaluate(*args, **kwargs)
+        return self.keras_model.evaluate(*argv, **kwargs)
 
     def predict(self, x, **kwargs):
         # ERROR
