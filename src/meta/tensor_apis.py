@@ -53,6 +53,12 @@ class AbstractTensorModel(ABC):
     def dump(self):
         pass
 
+    def file_dir(self, epoch):
+        result = os.path.join(MODELS_DIR, self.filename_no_ext(epoch))
+        if not os.path.exists(result):
+            os.makedirs(result)
+        return result
+
     def filename_no_ext(self, epoch):
         return '%s_%03d' % (self.name, epoch)
 
@@ -66,10 +72,10 @@ class AbstractTensorModel(ABC):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_TFLITE)
 
     def filepath_h5(self, epoch):
-        return os.path.join(MODELS_DIR, self.filename_h5(epoch))
+        return os.path.join(self.file_dir(epoch), self.filename_h5(epoch))
 
     def filepath_pb(self, epoch):
-        return os.path.join(MODELS_DIR, self.filename_pb(epoch))
+        return os.path.join(self.file_dir(epoch), self.filename_pb(epoch))
 
     def filepath_tflite(self, epoch):
-        return os.path.join(MODELS_DIR, self.filename_tflite(epoch))
+        return os.path.join(self.file_dir(epoch), self.filename_tflite(epoch))
