@@ -90,8 +90,16 @@ class MetaModel(AbstractTensorModel):
         return self.delegate.predict(*argv, **kwargs)
 
     def save(self, **kwargs):
+        assert self.mode == TensorApi.KERAS  # TODO improve state logic
         filepath = self.filepath_h5(self.epoch) if self.mode == TensorApi.KERAS else None
-        return self.delegate.save(filepath, **kwargs)
+        ret = self.delegate.save(filepath, **kwargs)
+        if ret != 0:
+            return ret
+        if self.mode == TensorApi.KERAS:
+            filepath_weights = self.filepath_weights_h5(self.epoch) if self.mode == TensorApi.KERAS else None
+            return self.delegate.save_weights(filepath_weights, **kwargs)
+
+        return 0
 
     def dump(self):
         gpu_info()
@@ -199,6 +207,7 @@ class MetaModel(AbstractTensorModel):
 
         if self.mode == TensorApi.KERAS:
             if mode == TensorApi.TENSOR_FLOW:
+                return 0
                 return MetaModelModeConverter(self).save_pb()
             elif mode == TensorApi.TF_LITE:
                 return MetaModelModeConverter(self).save_tflite(representative_data)

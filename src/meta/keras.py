@@ -113,6 +113,21 @@ class KerasModel(AbstractTensorModel):
 
         return ret
 
+    def save_weights(self, *argv, **kwargs):
+        # TODO auto determine filepath from epoch
+        assert len(argv) == 1
+        filepath = argv[0]
+        logger.info('%s Saving keras model weights to %s...', self.name, filepath)
+
+        ret = 0
+        try:
+            self.keras_model.save_weights(filepath, **kwargs)
+        except Exception as e:
+            logger.exception('Undocumented exception: %s', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+
+        return ret
+
     def summary(self, *argv, **kwargs):
         # Set print function, if not already set
         kwargs['print_fn'] = kwargs.get('print_fn', logger.info)

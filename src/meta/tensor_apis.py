@@ -65,6 +65,9 @@ class AbstractTensorModel(ABC):
     def filename_h5(self, epoch):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_H5)
 
+    def filename_weights_h5(self, epoch):
+        return '%s_weights%s' % (self.filename_no_ext(epoch), EXTENSION_H5)
+
     def filename_pb(self, epoch):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_PB)
 
@@ -73,6 +76,9 @@ class AbstractTensorModel(ABC):
 
     def filepath_h5(self, epoch):
         return os.path.join(self.file_dir(epoch), self.filename_h5(epoch))
+
+    def filepath_weights_h5(self, epoch):
+        return os.path.join(self.file_dir(epoch), self.filename_weights_h5(epoch))
 
     def filepath_pb(self, epoch):
         return os.path.join(self.file_dir(epoch), self.filename_pb(epoch))
