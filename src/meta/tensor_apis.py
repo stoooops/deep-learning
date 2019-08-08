@@ -19,6 +19,9 @@ class TensorApi(UniqueEnum):
     TF_LITE = 'tf.lite'
     TENSOR_RT = 'trt'
 
+    def __str__(self):
+        return self.name
+
 
 class AbstractTensorModel(ABC):
 
