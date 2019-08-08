@@ -20,6 +20,9 @@ DEFAULT_WARM_UP = 25
 DEFAULT_TRIALS = 100
 DEFAULT_REPEAT = 3
 
+DEFAULT_KERAS_INFERENCE = True
+DEFAULT_TFLITE_INFERENCE = True
+
 
 def get_time_format(num):
     return '%3d' if num >= 100 else '%2d' if num >= 10 else '%d'
@@ -78,20 +81,22 @@ def test(model, test_images, trials, repeat, time_format):
         logger.info('%s Test time = %.3fs (avg = %.3fs)' % (log_prefix, elapsed, elapsed / len(timings)))
 
 
-def infer(model, test_images, keras=True, tflite=True, warm_up_trials=DEFAULT_WARM_UP, trials=DEFAULT_TRIALS,
-          repeat=DEFAULT_REPEAT):
+def infer(model, test_images, keras=DEFAULT_KERAS_INFERENCE, tflite=DEFAULT_TFLITE_INFERENCE,
+          warm_up_trials=DEFAULT_WARM_UP, trials=DEFAULT_TRIALS, repeat=DEFAULT_REPEAT):
     time_format = get_time_format(len(test_images))
 
     # Test multiple sizes
     for i in [1, 10, 100, 1000]:
+        def run():
+            warm_up(model, test_images[:i], warm_up_trials, time_format)
+            test(model, test_images[:i], trials, repeat, time_format)
+
         if keras:
             model.load_keras_model()
-            warm_up(model, test_images[:i], warm_up_trials, time_format)
-            test(model, test_images[:i], trials, repeat, time_format)
+            run()
         if tflite:
             model.load_tflite_interpreter()
-            warm_up(model, test_images[:i], warm_up_trials, time_format)
-            test(model, test_images[:i], trials, repeat, time_format)
+            run()
 
 
 def get_args():
@@ -101,6 +106,10 @@ def get_args():
     p.add_argument('-w', '--warm-up', type=int, default=DEFAULT_WARM_UP, help='Warmup trials')
     p.add_argument('-t', '--trials', type=int, default=DEFAULT_TRIALS, help='Test trials')
     p.add_argument('-r', '--repeat', type=int, default=DEFAULT_REPEAT, help='Repeat sceneratios')
+    p.add_argument('--skip-keras', default=not DEFAULT_KERAS_INFERENCE, help='Skip keras inference',
+                   action="store_true")
+    p.add_argument('--skip-tflite', default=not DEFAULT_TFLITE_INFERENCE, help='Skip tflite inference',
+                   action="store_true")
     args = p.parse_args()
     assert args.model in MODEL_NAMES
     assert args.epoch > 0
@@ -126,7 +135,8 @@ def main():
     model = get_model(model_name, epoch)
     model.summary()
 
-    infer(model, test_images, keras=True, tflite=True, warm_up_trials=warm_up_trials, trials=trials, repeat=repeat)
+    infer(model, test_images, keras=not args.skip_keras, tflite=not args.skip_tflite, warm_up_trials=warm_up_trials,
+          trials=trials, repeat=repeat)
 
 
 if __name__ == '__main__':
