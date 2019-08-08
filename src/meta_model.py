@@ -247,8 +247,6 @@ class MetaModel:
     # LOAD TENSORRT
 
     def load_trt_model(self):
-        gpu_mb = 1024*10
-        trt_memory_mb = 1024*4
         if self.trt_model is not None:
             return 0
 
@@ -271,10 +269,19 @@ class MetaModel:
                 # Since we load everything in a new graph, this is not needed
                 tf.import_graph_def(frozen_graph, name=self.name)
 
+
+
+
+
+
+
+
             g = graph
             fg = frozen_graph
             import ipdb; ipdb.set_trace()
             #
+            gpu_mb = 1024*10
+            trt_memory_mb = 1024*4
             tf_memory_remaining = (gpu_mb - trt_memory_mb) / gpu_mb
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=tf_memory_remaining)
             trt_memory_b = trt_memory_mb * 1024 * 1024

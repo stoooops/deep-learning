@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import numpy as np
 import tensorflow as tf
 
@@ -74,3 +75,34 @@ class TfLiteModel(AbstractTensorModel):
         out_std, out_mean = output_detail['quantization']
         out_index = output_detail['index']
         logger.debug('%s Output mean, std, index: %s, %s, %s', self.name, out_mean, out_std, out_index)
+
+    @staticmethod
+    def load(name, epoch, filepath):
+        logger.debug('%s Loading tflite interpreter from %s...', name, filepath)
+        if os.path.exists(filepath):
+            tflite_interpreter = tf.lite.Interpreter(model_path=filepath)
+            tflite_interpreter.allocate_tensors()
+
+            tflite_input_detail = tflite_interpreter.get_input_details()[0]
+            tflite_in_std, tflite_in_mean = tflite_input_detail['quantization']
+
+            tflite_output_detail = tflite_interpreter.get_output_details()[0]
+            tflite_out_std, tflite_out_mean = tflite_output_detail['quantization']
+
+            def _scaled_to_real(scaled_value, mean, std):
+                return (scaled_value - mean) * std
+
+            def _real_to_scaled(real_value, mean, std):
+                return (real_value / std) + mean
+
+            def quantize_in(real_value):
+                return _real_to_scaled(real_value, tflite_in_mean, tflite_in_std).astype(np.uint8)
+
+            def quantize_out(real_value):
+                return _scaled_to_real(real_value.astype(np.float32), tflite_out_mean, tflite_out_std)
+
+            result = TfLiteModel(name, tflite_interpreter, quantize_in, quantize_out, epoch=epoch)
+
+            return 0, result
+        else:
+            return ERROR_TF_META_FILE_NOT_FOUND, None

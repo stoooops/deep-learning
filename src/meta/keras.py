@@ -158,3 +158,19 @@ class KerasModel(AbstractTensorModel):
             tf.train.write_graph(frozen_graph, MODELS_DIR, self.filename_pb(self.epoch), as_text=False)
 
         return 0
+
+    @staticmethod
+    def load(name, epoch, filepath):
+        logger.debug('%s Loading keras model from %s...', name, filepath)
+        try:
+            keras_model = keras.models.load_model(filepath)
+        except IOError as e:
+            logger.exception(e)
+            return ERROR_TF_META_CAUGHT_EXCEPTION
+        except Exception as e:
+            logger.exception(e)
+            return ERROR_TF_META_CAUGHT_EXCEPTION
+
+        result = KerasModel(name, keras_model, epoch=epoch)
+
+        return 0, result
