@@ -13,13 +13,15 @@ import argparse
 from src.utils.logger import HuliLogging
 
 from src.data.cifar100 import CIFAR_100_CLASSES, load_cifar100_data
-from src.meta_model import MetaModel
+from src.meta.meta import MetaModel, MetaModelFactory
+from src.meta.tensor_apis import TensorApi
 from src.models.basic import construct_basic_model
 from src.models.conv import construct_conv_model
 from src.models.resnet50 import construct_resnet50_model
 from src.utils.file_utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
+HuliLogging.attach_stdout()
 
 print('=' * 50)
 print('tensorflow-%s' % tf.__version__)
@@ -43,9 +45,9 @@ def get_filepath(model_name, epoch):
 def get_data():
     (train_images, train_labels), (test_images, test_labels) = load_cifar100_data()
     assert INPUT_SHAPE == train_images.shape[1:]
-    print('Train:', train_images.shape)
-    print('Test: ', test_images.shape)
-    print('classes:', len(CIFAR_100_CLASSES))
+    logger.info('Train: %s', train_images.shape)
+    logger.info('Test: %s', test_images.shape)
+    logger.info('Classes: %s', len(CIFAR_100_CLASSES))
     return (train_images, train_labels), (test_images, test_labels)
 
 
@@ -56,19 +58,19 @@ def model_compile(model):
 def model_basic():
     model = construct_basic_model(INPUT_SHAPE, OUTPUT_LEN)
     model_compile(model)
-    return model
+    return 0, model
 
 
 def model_conv():
     model = construct_conv_model(INPUT_SHAPE, OUTPUT_LEN)
     model_compile(model)
-    return model
+    return 0, model
 
 
 def model_resnet50():
     model = construct_resnet50_model(INPUT_SHAPE, OUTPUT_LEN)
     model_compile(model)
-    return model
+    return 0, model
 
 
 def get_model(name, epoch):
@@ -83,7 +85,7 @@ def get_model(name, epoch):
         else:
             assert name in MODEL_NAMES
     else:
-        return MetaModel.from_h5(name, epoch)
+        return MetaModelFactory.from_h5(name, epoch)
 
 
 def evaluate(model, test_xy):
@@ -93,7 +95,10 @@ def evaluate(model, test_xy):
     print('[%.3fs] Test accuracy: %s' % (elapsed, test_acc))
 
 
-def train(model, train, test, epochs, initial_epoch=0, skip_tflite=False):
+def train(model, train, test, epochs, initial_epoch=0, skip_pb=False, skip_tflite=False):
+    """
+    :type model: MetaModel
+    """
     for prev_epoch in range(initial_epoch, epochs):
         epoch = prev_epoch + 1
         # Fit
@@ -103,7 +108,14 @@ def train(model, train, test, epochs, initial_epoch=0, skip_tflite=False):
         evaluate(model, test)
 
         # Save
-        model.save(convert_tflite=not skip_tflite, representative_data=train[0] if not skip_tflite else None)
+        if not skip_pb and not skip_tflite:
+            model.save_all(representative_data=train[0])
+        else:
+            model.save()
+            if not skip_pb:
+                model.save_to(TensorApi.TENSOR_FLOW)
+            if not skip_tflite:
+                model.save_to(TensorApi.TF_LITE, representative_data=train[0])
 
 
 def get_args():
@@ -111,6 +123,7 @@ def get_args():
     p.add_argument('-e', '--epochs', type=int, default=1, help='Training epochs.')
     p.add_argument('-i', '--initial-epoch', type=int, default=0, help='Initial epoch.')
     p.add_argument('-m', '--model', required=True, help='Model name. One of %s' % MODEL_NAMES)
+    p.add_argument('--skip-pb', default=False, help='Skip pb serialization', action="store_true")
     p.add_argument('--skip-tflite', default=False, help='Skip tflite serialization', action="store_true")
     args = p.parse_args()
     assert args.model in MODEL_NAMES
@@ -130,7 +143,10 @@ def main():
     (train_images, train_labels), (test_images, test_labels) = get_data()
 
     # Model
-    model = get_model(model_name, initial_epoch)
+    ret, model = get_model(model_name, initial_epoch)
+    if ret != 0:
+        logger.error('Getting model failed with error %d', ret)
+        exit(1)
     model.summary()
 
     # Train

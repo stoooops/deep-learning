@@ -4,12 +4,14 @@ import sys
 import time
 import argparse
 
+from src.meta.tensor_apis import TensorApi
 from src.utils.logger import HuliLogging
 from bin.train import get_data, get_model, MODEL_NAMES
 
 import tensorflow as tf
 
 logger = HuliLogging.get_logger(__name__)
+HuliLogging.attach_stdout()
 
 
 logger.info('=' * 50)
@@ -88,19 +90,20 @@ def infer(model, test_images, keras=DEFAULT_KERAS_INFERENCE, tflite=DEFAULT_TFLI
 
     # Test multiple sizes
     for i in [1, 10, 100, 1000]:
-        def run():
+        def run(mode):
+            ret = model.change_mode(mode)
+            if ret != 0:
+                logger.error('Changing to mode %s failed with error %d', TensorApi.KERAS, ret)
+                exit(1)
             warm_up(model, test_images[:i], warm_up_trials, time_format)
             test(model, test_images[:i], trials, repeat, time_format)
 
         if keras:
-            model.load_keras_model()
-            run()
+            run(TensorApi.KERAS)
         if tflite:
-            model.load_tflite_interpreter()
-            run()
+            run(TensorApi.TF_LITE)
         if trt:
-            model.load_trt_model()
-            run()
+            run(TensorApi.TENSOR_RT)
 
 
 def get_args():
@@ -137,7 +140,10 @@ def main():
     (train_images, train_labels), (test_images, test_labels) = get_data()
 
     # Load Model
-    model = get_model(model_name, epoch)
+    ret, model = get_model(model_name, epoch)
+    if ret != 0:
+        logger.error('Getting model failed with error %d', ret)
+        exit(1)
     model.summary()
 
     infer(model, test_images, keras=not args.skip_keras, tflite=not args.skip_tflite, trt=not args.skip_trt,

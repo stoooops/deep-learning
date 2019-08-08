@@ -26,7 +26,7 @@ class KerasModel(AbstractTensorModel):
         """
         super().__init__(name)
 
-        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 1)
+        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 0)
         self.epoch = epoch
 
         # keras Model
@@ -111,7 +111,22 @@ class KerasModel(AbstractTensorModel):
 
         return ret
 
+    def summary(self, *argv, **kwargs):
+        # Set print function, if not already set
+        kwargs['print_fn'] = kwargs.get('print_fn', logger.info)
+        ret = 0
+        try:
+            self.keras_model.summary(*argv, **kwargs)
+        except ValueError as e:
+            logger.exception(e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        return ret
+
     def dump(self):
+        ret = self.summary(print_fn=logger.debug)
+        if ret != 0:
+            return ret
+
         input_tensor = self.keras_model.input
         logger.debug('%s Input tensor: %s', self.name, input_tensor)
 
@@ -123,6 +138,8 @@ class KerasModel(AbstractTensorModel):
 
         output_tensor_name = self.keras_model.output.name.split(':')[0]
         logger.debug('%s Output tensor name: %s', self.name, output_tensor_name)
+
+        return 0
 
     def freeze_session(self, keep_var_names=None, output_names=None, clear_devices=True):
         """
@@ -166,10 +183,10 @@ class KerasModel(AbstractTensorModel):
             keras_model = keras.models.load_model(filepath)
         except IOError as e:
             logger.exception(e)
-            return ERROR_TF_META_CAUGHT_EXCEPTION
+            return ERROR_TF_META_CAUGHT_EXCEPTION, None
         except Exception as e:
             logger.exception(e)
-            return ERROR_TF_META_CAUGHT_EXCEPTION
+            return ERROR_TF_META_CAUGHT_EXCEPTION, None
 
         result = KerasModel(name, keras_model, epoch=epoch)
 

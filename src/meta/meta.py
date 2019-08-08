@@ -22,21 +22,24 @@ SUPPORTED_MODES = [TensorApi.NONE, TensorApi.KERAS, TensorApi.TENSOR_FLOW, Tenso
 
 class MetaModel(AbstractTensorModel):
 
-    def __init__(self, name, epoch=UNKNOWN_EPOCH):
+    def __init__(self, name, epoch=UNKNOWN_EPOCH, delegate=None):
         super().__init__(name)
         self.mode = TensorApi.NONE
 
-        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 1)
+        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 0)
         self.epoch = epoch
 
+        assert delegate is None or isinstance(delegate, AbstractTensorModel)
         self.delegate = None
+        if delegate is not None:
+            self.attach_delegate(delegate)
 
     def attach_delegate(self, delegate):
         """
         :type delegate: AbstractTensorModel
         """
         assert self.mode == TensorApi.NONE
-        assert isinstance(delegate, AbstractTensorModel)
+        assert isinstance(delegate, AbstractTensorModel), 'Expected AbstractTensorModel but got: %s' % delegate
 
         if delegate.mode == TensorApi.KERAS:
             assert isinstance(delegate, KerasModel)
@@ -97,6 +100,12 @@ class MetaModel(AbstractTensorModel):
             self.delegate.dump()
 
     # New APIs
+
+    def summary(self, *args, **kwargs):
+        if self.mode != TensorApi.KERAS:
+            logger.error('%s Summary not available in mode %s', self.name, self.mode)
+            return ERROR_TF_META_WRONG_MODE
+        return self.delegate.summary(*args, **kwargs)
 
     def reload(self):
         assert self.mode == TensorApi.KERAS
@@ -184,10 +193,10 @@ class MetaModel(AbstractTensorModel):
         logger.debug('%s Saving mode %s via mode %s...', self.name, mode, self.mode)
 
         if self.mode == TensorApi.KERAS:
-            if mode == TensorApi.TF_LITE:
-                return MetaModelModeConverter(self).save_tflite(representative_data)
-            elif mode == TensorApi.TENSOR_FLOW:
+            if mode == TensorApi.TENSOR_FLOW:
                 return MetaModelModeConverter(self).save_pb()
+            elif mode == TensorApi.TF_LITE:
+                return MetaModelModeConverter(self).save_tflite(representative_data)
             else:
                 assert 1 == 0, 'Unexpected mode: %s' % mode
 
