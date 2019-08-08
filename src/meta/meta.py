@@ -91,15 +91,31 @@ class MetaModel(AbstractTensorModel):
 
     def save(self, **kwargs):
         assert self.mode == TensorApi.KERAS  # TODO improve state logic
+
         filepath = self.filepath_h5(self.epoch) if self.mode == TensorApi.KERAS else None
+        logger.debug('%s Saving keras model to %s...', self.name, filepath)
         ret = self.delegate.save(filepath, **kwargs)
         if ret != 0:
             return ret
-        if self.mode == TensorApi.KERAS:
-            filepath_weights = self.filepath_weights_h5(self.epoch) if self.mode == TensorApi.KERAS else None
-            return self.delegate.save_weights(filepath_weights, **kwargs)
 
-        return 0
+        if self.mode == TensorApi.KERAS:
+            # save weights
+            filepath_weights = self.filepath_weights_h5(self.epoch)
+            logger.debug('%s Saving keras model weights to %s...', self.name, filepath_weights)
+            ret = self.delegate.save_weights(filepath_weights, **kwargs)
+            if ret != 0:
+                return ret
+
+            # unless explicitly passed in as include_optimizer=True, then also store without the optimizer info
+            if not kwargs.get('include_optimizer', False):
+                filepath_no_opt = self.filepath_no_opt_h5(self.epoch)
+                logger.debug('%s Saving keras model without optimizer to %s...', self.name, filepath_no_opt)
+                kwargs['include_optimizer'] = True
+                ret = self.delegate.save(filepath_no_opt, **kwargs)
+                if ret != 0:
+                    return ret
+
+        return ret
 
     def dump(self):
         gpu_info()

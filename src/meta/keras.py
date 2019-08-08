@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from datetime import datetime
-from src.meta.constants import TENSORBOARD_DIR, UNKNOWN_EPOCH
+from src.meta.constants import EXTENSION_H5, TENSORBOARD_DIR, UNKNOWN_EPOCH
 from src.meta.errors import *
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.logger import HuliLogging
@@ -38,6 +38,12 @@ class KerasModel(AbstractTensorModel):
                                             datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
         self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensor_board_log_dir)
 
+        # checkpoint
+        file_dir = os.path.join(MODELS_DIR, '%s_{epoch:03d}' % self.name)
+        checkpoint_format = '%s_{epoch:03d}_checkpoint%s' % (self.name, EXTENSION_H5)
+        checkpoint_filepath_format = os.path.join(file_dir, checkpoint_format)
+        self.keras_checkpoint_callback = keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath_format)
+
         self.mode = TensorApi.KERAS
 
     def compile(self, *argv, **kwargs):
@@ -51,15 +57,24 @@ class KerasModel(AbstractTensorModel):
     def fit(self, *argv, **kwargs):
         assert self.keras_model is not None
 
-        # attach tensorboard callback
-        kwargs['callbacks'] = kwargs.get('callbacks', []) + [self.keras_tensorboard_callback]
-        logger.debug('%s keras callback attached to tensorboard. Visualize by running: ', self.name)
+        # attach checkpoint, tensorboard callback
+        callbacks = [self.keras_checkpoint_callback, self.keras_tensorboard_callback]
+        kwargs['callbacks'] = kwargs.get('callbacks', []) + callbacks
+        logger.debug('%s keras tensorboard callback attached. Visualize by running: ', self.name)
         logger.debug('> tensorboard --logdir=%s', self.keras_tensorboard_callback.log_dir)
+        logger.debug('%s keras checkpoint callback attached. Logging to %s...', self.name,
+                     self.keras_checkpoint_callback.filepath)
+
+        # ensure directories are init
+        epochs = kwargs.get('epochs', 1)
+        initial_epoch = kwargs.get('initial_epoch', 0)
+        for i in range(initial_epoch + 1, epochs + 1):
+            file_dir = self.file_dir(i)
+            logger.info('Creating %s (if not already exists)...', file_dir)
 
         # Call fit
         ret, history = 0, None
         try:
-            # TODO Add checkpoint callback https://www.tensorflow.org/tutorials/keras/save_and_restore_models
             history = self.keras_model.fit(*argv, **kwargs)
         except RuntimeError as e:
             logger.exception('Model was never compiled: %s', e)
@@ -70,8 +85,9 @@ class KerasModel(AbstractTensorModel):
         except Exception as e:
             logger.exception('Undocumented error: %s', e)
             ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        if ret != 0:
+            return ret, None
 
-        epochs = kwargs.get('epochs', 1)
         self.epoch = epochs
         return ret, history
 
@@ -102,7 +118,6 @@ class KerasModel(AbstractTensorModel):
         # TODO auto determine filepath from epoch
         assert len(argv) == 1
         filepath = argv[0]
-        logger.info('%s Saving keras model to %s...', self.name, filepath)
 
         ret = 0
         try:
@@ -117,7 +132,6 @@ class KerasModel(AbstractTensorModel):
         # TODO auto determine filepath from epoch
         assert len(argv) == 1
         filepath = argv[0]
-        logger.info('%s Saving keras model weights to %s...', self.name, filepath)
 
         ret = 0
         try:
@@ -195,7 +209,7 @@ class KerasModel(AbstractTensorModel):
 
             logger.info('%s Saving frozen graph to %s...', self.name, self.filepath_pb(self.epoch))
             try:
-                tf.train.write_graph(frozen_graph, MODELS_DIR, self.filename_pb(self.epoch), as_text=False)
+                tf.train.write_graph(frozen_graph, self.file_dir(), self.filename_pb(self.epoch), as_text=False)
             except Exception as e:
                 logger.exception(e)
                 return ERROR_TF_META_CAUGHT_EXCEPTION
