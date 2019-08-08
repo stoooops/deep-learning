@@ -109,13 +109,30 @@ def train(model, train, test, epochs, initial_epoch=0, skip_pb=False, skip_tflit
 
         # Save
         if not skip_pb and not skip_tflite:
-            model.save_all(representative_data=train[0])
+            ret = model.save_all(representative_data=train[0])
+            if ret != 0:
+                logger.error('%s Failed saving all due to error %d', model.name, ret)
+                exit(1)
         else:
-            model.save()
+            # keras
+            ret = model.save()
+            if ret != 0:
+                logger.error('%s Failed saving due to error %d', model.name, ret)
+                exit(1)
+
+            # pb
             if not skip_pb:
-                model.save_to(TensorApi.TENSOR_FLOW)
+                ret = model.save_to(TensorApi.TENSOR_FLOW)
+                if ret != 0:
+                    logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TENSOR_FLOW, ret)
+                    exit(1)
+
+            # tflite
             if not skip_tflite:
-                model.save_to(TensorApi.TF_LITE, representative_data=train[0])
+                ret = model.save_to(TensorApi.TF_LITE, representative_data=train[0])
+                if ret != 0:
+                    logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TF_LITE, ret)
+                    exit(1)
 
 
 def get_args():
@@ -147,7 +164,7 @@ def main():
     if ret != 0:
         logger.error('Getting model failed with error %d', ret)
         exit(1)
-    model.summary()
+    model.dump()
 
     # Train
     train(model, (train_images, train_labels), (test_images, test_labels), epochs, initial_epoch=initial_epoch,
