@@ -22,6 +22,7 @@ DEFAULT_REPEAT = 3
 
 DEFAULT_KERAS_INFERENCE = True
 DEFAULT_TFLITE_INFERENCE = True
+DEFAULT_TRT_INFERENCE = True
 
 
 def get_time_format(num):
@@ -82,7 +83,7 @@ def test(model, test_images, trials, repeat, time_format):
 
 
 def infer(model, test_images, keras=DEFAULT_KERAS_INFERENCE, tflite=DEFAULT_TFLITE_INFERENCE,
-          warm_up_trials=DEFAULT_WARM_UP, trials=DEFAULT_TRIALS, repeat=DEFAULT_REPEAT):
+          trt=DEFAULT_TRT_INFERENCE, warm_up_trials=DEFAULT_WARM_UP, trials=DEFAULT_TRIALS, repeat=DEFAULT_REPEAT):
     time_format = get_time_format(len(test_images))
 
     # Test multiple sizes
@@ -97,6 +98,9 @@ def infer(model, test_images, keras=DEFAULT_KERAS_INFERENCE, tflite=DEFAULT_TFLI
         if tflite:
             model.load_tflite_interpreter()
             run()
+        if trt:
+            model.load_trt_model()
+            run()
 
 
 def get_args():
@@ -110,6 +114,7 @@ def get_args():
                    action="store_true")
     p.add_argument('--skip-tflite', default=not DEFAULT_TFLITE_INFERENCE, help='Skip tflite inference',
                    action="store_true")
+    p.add_argument('--skip-trt', default=not DEFAULT_TRT_INFERENCE, help='Skip trt inference', action="store_true")
     args = p.parse_args()
     assert args.model in MODEL_NAMES
     assert args.epoch > 0
@@ -135,8 +140,8 @@ def main():
     model = get_model(model_name, epoch)
     model.summary()
 
-    infer(model, test_images, keras=not args.skip_keras, tflite=not args.skip_tflite, warm_up_trials=warm_up_trials,
-          trials=trials, repeat=repeat)
+    infer(model, test_images, keras=not args.skip_keras, tflite=not args.skip_tflite, trt=not args.skip_trt,
+          warm_up_trials=warm_up_trials, trials=trials, repeat=repeat)
 
 
 if __name__ == '__main__':

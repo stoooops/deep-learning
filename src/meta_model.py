@@ -5,6 +5,7 @@ from datetime import datetime
 
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.python.compiler.tensorrt import trt_convert as trt
 
 import numpy as np
 
@@ -28,6 +29,7 @@ UNKNOWN_EPOCH = -1
 MODE_NONE = 'none'
 MODE_KERAS_MODEL = 'keras'
 MODE_TFLITE_INTERPRETER = 'tflite'
+MODE_TRT = 'trt'
 
 
 def _scaled_to_real(scaled_value, mean, std):
@@ -51,8 +53,13 @@ class MetaModel:
         self.keras_model = keras_model
         if self.keras_model is not None:
             self.mode = MODE_KERAS_MODEL
+            self.keras_input = self.keras_model.input
+            self.keras_input_name = self.keras_input.name.split(':')[0]
+            self.keras_output = self.keras_model.output
+            self.keras_output_name = self.keras_output.name.split(':')[0]
         else:
             self.mode = MODE_NONE
+            self.keras_input = self.keras_input_name = self.keras_output = self.keras_output_name = None
         self.keras_tensorboard_callback = None
 
         # tflite
@@ -61,6 +68,9 @@ class MetaModel:
         self.tflite_output_detail = self.tflite_out_mean = self.tflite_out_std = self.tflite_out_index = None
         self.tflite_quantize_in = self.tflite_quantize_out = None
         self.resized = False
+
+        # TensorRT
+        self.trt_model = None
 
     # TRAIN
 
@@ -122,10 +132,15 @@ class MetaModel:
             return 0
 
         self.unload_tflite_interpreter()
+        self.unload_trt_model()
 
         filepath = self.filepath_h5()
         logger.debug('%s Loading keras model from %s...', self.name, filepath)
         self.keras_model = keras.models.load_model(filepath)
+        self.keras_input = self.keras_model.input
+        self.keras_input_name = self.keras_input.name.split(':')[0]
+        self.keras_output = self.keras_model.output
+        self.keras_output_name = self.keras_output.name.split(':')[0]
         self.mode = MODE_KERAS_MODEL
 
         return 0
@@ -176,6 +191,9 @@ class MetaModel:
 
             logger.info('%s Saving frozen graph to %s...', self.name, self.filepath_pb())
             tf.train.write_graph(frozen_graph, MODELS_DIR, self.filename_pb(), as_text=False)
+
+            #import ipdb; ipdb.set_trace()
+            logger.info('')
         return 0
 
     # LOAD TFLITE
@@ -185,6 +203,7 @@ class MetaModel:
             return 0
 
         self.unload_keras_model()
+        self.unload_trt_model()
 
         filepath = self.filepath_tflite()
         logger.debug('%s Loading tflite interpreter from %s...', self.name, filepath)
@@ -225,6 +244,68 @@ class MetaModel:
             self.tflite_output_detail = self.tflite_out_mean = self.tflite_out_std = self.tflite_out_index = None
             self.tflite_quantize_in = self.tflite_quantize_out = None
 
+    # LOAD TENSORRT
+
+    def load_trt_model(self):
+        gpu_mb = 1024*10
+        trt_memory_mb = 1024*4
+        if self.trt_model is not None:
+            return 0
+
+        outputs = [out.op.name for out in self.keras_model.outputs]
+        logger.info('OUTPUTS: %s', outputs)
+        self.unload_keras_model()
+        self.unload_tflite_interpreter()
+
+        with tf.Session() as sess:
+            # First deserialize your frozen graph:
+            filepath = self.filepath_pb()
+            logger.info('%s Loading frozen graph from %s...', self.name, filepath)
+            with tf.gfile.GFile(filepath, 'rb') as f:
+                frozen_graph = tf.GraphDef()
+                frozen_graph.ParseFromString(f.read())
+
+            # Then, we import the graph_def into a new Graph and return it
+            with tf.Graph().as_default() as graph:
+                # The name var will prefix every op/nodes in your graph
+                # Since we load everything in a new graph, this is not needed
+                tf.import_graph_def(frozen_graph, name=self.name)
+
+            g = graph
+            fg = frozen_graph
+            import ipdb; ipdb.set_trace()
+            #
+            tf_memory_remaining = (gpu_mb - trt_memory_mb) / gpu_mb
+            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=tf_memory_remaining)
+            trt_memory_b = trt_memory_mb * 1024 * 1024
+
+            with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)).as_default():
+                trt_graph = trt.create_inference_graph(input_graph_def=frozen_graph,
+                                                       outputs=outputs,
+                                                       max_batch_size=1,
+                                                       max_workspace_size_bytes=trt_memory_b,
+                                                       precision_mode="INT8")
+                logger.info('type: %s', type(trt_graph))
+
+            # Now you can create a TensorRT inference graph from your frozen graph:
+            logger.info('%s Converting frozen graph to TRT...', self.name)
+            converter = trt.TrtGraphConverter(input_graph_def=frozen_graph,
+                                              nodes_blacklist=[self.keras_output_name])  # output nodes
+            trt_graph = converter.convert()
+
+            # Import the TensorRT graph into a new graph and run:
+            logger.info('%s Importing TRT graph into a new graph and running...', self.name)
+            output_node = tf.import_graph_def(trt_graph, return_elements=[self.keras_output_name])
+            sess.run(output_node)
+
+    def unload_trt_model(self):
+        if self.mode == MODE_TRT:
+            self.mode = MODE_NONE
+        if self.trt_model is not None:
+            logger.debug('%s Deleting TensorRT model...', self.name)
+            del self.trt_model
+            self.trt_model = None
+
     # SAVE
 
     def save(self, convert_tflite=False, representative_data=None, **kwargs):
@@ -249,7 +330,11 @@ class MetaModel:
         h5_filepath = self.filepath_h5()
         if not os.path.exists(h5_filepath):
             return ERROR_H5_FILE_NOT_FOUND
+
         converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file(h5_filepath)
+        # above call clears the keras session, so we need to reload our model
+        if self.keras_model is not None:
+            self.reload_keras_model()
 
         def representative_dataset_gen():
             for i in range(1000):
@@ -273,11 +358,6 @@ class MetaModel:
         logger.info('%s Saving tflite model to %s...', self.name, tflite_filepath)
         with open(tflite_filepath, 'wb') as o_:
             o_.write(tflite_model)
-
-        if self.keras_model is not None:
-            # now we need to reload the keras model, else fit() function will fail with strange errors
-            # because the Session gets messed up when we do this converter stuff
-            self.reload_keras_model()
 
         return 0
 
