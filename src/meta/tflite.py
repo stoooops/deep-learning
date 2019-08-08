@@ -76,6 +76,8 @@ class TfLiteModel(AbstractTensorModel):
         out_index = output_detail['index']
         logger.debug('%s Output mean, std, index: %s, %s, %s', self.name, out_mean, out_std, out_index)
 
+        return 0
+
     @staticmethod
     def load(name, epoch, filepath):
         logger.debug('%s Loading tflite interpreter from %s...', name, filepath)

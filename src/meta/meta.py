@@ -96,8 +96,10 @@ class MetaModel(AbstractTensorModel):
     def dump(self):
         logger.debug('%s mode = %s', self.name, self.mode)
         logger.debug('%s epoch = %s', self.name, self.epoch)
+        ret = 0
         if self.mode != TensorApi.NONE:
-            self.delegate.dump()
+            ret = self.delegate.dump()
+        return ret
 
     # New APIs
 

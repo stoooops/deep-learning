@@ -6,12 +6,12 @@ import tensorflow as tf
 from tensorflow import keras
 
 from datetime import datetime
-from src.meta.constants import UNKNOWN_EPOCH
+from src.meta.constants import TENSORBOARD_DIR, UNKNOWN_EPOCH
 from src.meta.errors import *
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.logger import HuliLogging
 
-from src.utils.file_utils import MODELS_DIR, TMP_DIR
+from src.utils.file_utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
 
@@ -34,9 +34,9 @@ class KerasModel(AbstractTensorModel):
         self.keras_model = keras_model
 
         # tensorboard callback
-        tensorboard_log_dir = os.path.join(TMP_DIR,
-                                          'tensorboard/' + datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
-        self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensorboard_log_dir)
+        tensor_board_log_dir = os.path.join(TENSORBOARD_DIR,
+                                            datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
+        self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensor_board_log_dir)
 
         self.mode = TensorApi.KERAS
 
@@ -53,6 +53,8 @@ class KerasModel(AbstractTensorModel):
 
         # attach tensorboard callback
         kwargs['callbacks'] = kwargs.get('callbacks', []) + [self.keras_tensorboard_callback]
+        logger.debug('%s keras callback attached to tensorboard. Visualize by running: ', self.name)
+        logger.debug('> tensorboard --logdir=%s', self.keras_tensorboard_callback.log_dir)
 
         # Call fit
         ret, history = 0, None
