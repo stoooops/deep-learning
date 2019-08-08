@@ -82,60 +82,11 @@ class TensorFlowModel(AbstractTensorModel):
                                            datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + name)
         train_writer = tf.summary.FileWriter(tensorboard_log_dir)
         train_writer.add_graph(sess.graph)
-        logger.debug('%s pb model imported into tensorboard. Visualize by running: ', name)
-        logger.debug('> tensorboard --logdir=%s', tensorboard_log_dir)
         train_writer.flush()
         train_writer.close()
+        logger.debug('%s pb model imported into tensorboard. Visualize by running: ', name)
+        logger.debug('> tensorboard --logdir=%s', tensorboard_log_dir)
 
         result = TensorFlowModel(name, graph_def, sess.graph, epoch=epoch)
 
         return 0, result
-
-        #with tf.Session() as sess:
-        #    # First deserialize your frozen graph:
-        #    logger.info('%s Loading frozen graph from %s...', name, filepath)
-        #    with tf.gfile.GFile(filepath, 'rb') as f:
-        #        frozen_graph = tf.GraphDef()
-        #        frozen_graph.ParseFromString(f.read())
-
-            # Then, we import the graph_def into a new Graph and return it
-        #    with tf.Graph().as_default() as graph:
-                # The name var will prefix every op/nodes in your graph
-                # Since we load everything in a new graph, this is not needed
-        #        tf.import_graph_def(frozen_graph, name=name)
-
-
-
-    def ___import_graph_def(self, name, graph_def):
-        tf.reset_default_graph()
-        self.graph_def = graph_def
-        with tf.Graph().as_default() as graph:
-            tf.import_graph_def(self.graph_def, name=name)
-        self.graph = graph
-
-        # # Find our inputs and outputs
-        # try:
-        #     self._x = self.graph.get_tensor_by_name(HuliTFModel.MASKRCNN_INPUT_TF_NAME)
-        # except KeyError:
-        #     try:
-        #         self._x = self.graph.get_tensor_by_name(HuliTFModel.RETINANET_INPUT_TF_NAME)
-        #     except KeyError as e:
-        #         print("Failed to find tensor", e)
-        #         print("Available tensors:")
-        #         for n in self.graph_def.node:
-        #             print(n.name)
-        #         raise(e)
-
-        # self.outputs = [HuliTFModel.BOXES_TF_NAME, HuliTFModel.SCORES_TF_NAME, HuliTFModel.LABELS_TF_NAME]
-        # self.box_ys = [self.graph.get_tensor_by_name(name) for name in self.outputs]
-
-        # try:
-        #     self.graph.get_tensor_by_name(HuliTFModel.MASKS_TF_NAME)
-        #     self.outputs.append(HuliTFModel.MASKS_TF_NAME)
-        #     self.mask_ys = [self.graph.get_tensor_by_name(name) for name in self.outputs]
-        # except KeyError:
-        #     # If we can't get the masks this just means this is a retinanet instead of maskrcnn
-        #     pass
-
-        self.session = None
-

@@ -170,11 +170,20 @@ class KerasModel(AbstractTensorModel):
             if clear_devices:
                 for node in input_graph_def.node:
                     node.device = ""
-            frozen_graph = tf.graph_util.convert_variables_to_constants(session, input_graph_def, output_names,
-                                                                        freeze_var_names)
+
+            try:
+                frozen_graph = tf.graph_util.convert_variables_to_constants(session, input_graph_def, output_names,
+                                                                            freeze_var_names)
+            except Exception as e:
+                logger.exception(e)
+                return ERROR_TF_META_CAUGHT_EXCEPTION
 
             logger.info('%s Saving frozen graph to %s...', self.name, self.filepath_pb(self.epoch))
-            tf.train.write_graph(frozen_graph, MODELS_DIR, self.filename_pb(self.epoch), as_text=False)
+            try:
+                tf.train.write_graph(frozen_graph, MODELS_DIR, self.filename_pb(self.epoch), as_text=False)
+            except Exception as e:
+                logger.exception(e)
+                return ERROR_TF_META_CAUGHT_EXCEPTION
 
         return 0
 
