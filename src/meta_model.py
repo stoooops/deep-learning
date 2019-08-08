@@ -20,6 +20,7 @@ ERROR_NOTHING_LOADED = 10003
 ERROR_INVALID_STATE = 10004  # bug
 
 EXTENSION_H5 = '.h5'
+EXTENSION_PB = '.pb'
 EXTENSION_TFLITE = '_int8.tflite'
 
 UNKNOWN_EPOCH = -1
@@ -45,6 +46,8 @@ class MetaModel:
     def __init__(self, name, epoch=UNKNOWN_EPOCH, keras_model=None):
         self.name = name
         self.epoch = epoch
+
+        # Keras
         self.keras_model = keras_model
         if self.keras_model is not None:
             self.mode = MODE_KERAS_MODEL
@@ -52,6 +55,7 @@ class MetaModel:
             self.mode = MODE_NONE
         self.keras_tensorboard_callback = None
 
+        # tflite
         self.tflite_interpreter = None
         self.tflite_input_detail = self.tflite_in_mean = self.tflite_in_std = self.tflite_in_index = None
         self.tflite_output_detail = self.tflite_out_mean = self.tflite_out_std = self.tflite_out_index = None
@@ -111,7 +115,7 @@ class MetaModel:
         else:
             return ERROR_INVALID_STATE, None
 
-    # LOAD
+    # LOAD KERAS
 
     def load_keras_model(self):
         if self.keras_model is not None:
@@ -127,16 +131,54 @@ class MetaModel:
         return 0
 
     def unload_keras_model(self):
-        logger.debug('%s Deleting keras model...', self.name)
-        del self.keras_model
-        self.keras_model = None
+        if self.mode == MODE_KERAS_MODEL:
+            self.mode = MODE_NONE
+        if self.keras_model is not None:
+            logger.debug('%s Deleting keras model...', self.name)
+            del self.keras_model
+            self.keras_model = None
 
     def reload_keras_model(self):
         assert self.keras_model is not None
         logger.debug('%s Reloading keras model...', self.name)
-        del self.keras_model
-        self.keras_model = None
+        self.unload_keras_model()
         return self.load_keras_model()
+
+    def freeze_keras_session(self, keep_var_names=None, output_names=None, clear_devices=True):
+        """
+        Freezes the state of a session into a pruned computation graph.
+
+        Creates a new computation graph where variable nodes are replaced by
+        constants taking their current value in the session. The new graph will be
+        pruned so subgraphs that are not necessary to compute the requested
+        outputs are removed.
+        @param keep_var_names A list of variable names that should not be frozen,
+                              or None to freeze all the variables in the graph.
+        @param output_names Names of the relevant graph outputs.
+        @param clear_devices Remove the device directives from the graph for better portability.
+        @return The frozen graph definition.
+        """
+        # Refer https://stackoverflow.com/a/45466355/2079993
+        session = keras.backend.get_session()
+        graph = session.graph
+        with graph.as_default():
+            freeze_var_names = list(set(v.op.name for v in tf.global_variables()).difference(keep_var_names or []))
+            # tweaked here
+            output_names = output_names or [out.op.name for out in self.keras_model.outputs]
+            output_names += [v.op.name for v in tf.global_variables()]
+            # Graph -> GraphDef ProtoBuf
+            input_graph_def = graph.as_graph_def()
+            if clear_devices:
+                for node in input_graph_def.node:
+                    node.device = ""
+            frozen_graph = tf.graph_util.convert_variables_to_constants(session, input_graph_def, output_names,
+                                                                        freeze_var_names)
+
+            logger.info('%s Saving frozen graph to %s...', self.name, self.filepath_pb())
+            tf.train.write_graph(frozen_graph, MODELS_DIR, self.filename_pb(), as_text=False)
+        return 0
+
+    # LOAD TFLITE
 
     def load_tflite_interpreter(self):
         if self.tflite_interpreter is not None:
@@ -173,6 +215,8 @@ class MetaModel:
             return ERROR_TFLITE_FILE_NOT_FOUND
 
     def unload_tflite_interpreter(self):
+        if self.mode == MODE_TFLITE_INTERPRETER:
+            self.mode = MODE_NONE
         if self.tflite_interpreter is not None:
             logger.debug('%s Deleting tflite interpreter...', self.name)
             del self.tflite_interpreter
@@ -189,6 +233,9 @@ class MetaModel:
         h5_filepath = self.filepath_h5()
         logger.info('%s Saving keras model to %s...', self.name, h5_filepath)
         self.keras_model.save(h5_filepath, **kwargs)
+
+        # Freeze keras session
+        self.freeze_keras_session()
 
         # convert to tflite and save
         assert convert_tflite == (representative_data is not None)
@@ -248,11 +295,17 @@ class MetaModel:
     def filename_h5(self):
         return '%s%s' % (self.filename_no_ext(), EXTENSION_H5)
 
+    def filename_pb(self):
+        return '%s%s' % (self.filename_no_ext(), EXTENSION_PB)
+
     def filename_tflite(self):
         return '%s%s' % (self.filename_no_ext(), EXTENSION_TFLITE)
 
     def filepath_h5(self):
         return os.path.join(MODELS_DIR, self.filename_h5())
+
+    def filepath_pb(self):
+        return os.path.join(MODELS_DIR, self.filename_pb())
 
     def filepath_tflite(self):
         return os.path.join(MODELS_DIR, self.filename_tflite())
