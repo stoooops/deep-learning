@@ -144,25 +144,20 @@ class MetaModel(AbstractTensorModel):
 
     def reload(self):
         assert self.mode == TensorApi.KERAS
-        before = self.mode
-
-        logger.debug('%s Deleting existing delegate...', self.log_prefix())
-        del self.delegate
-        self.delegate = None
-        self.mode = TensorApi.NONE
-
-        if before == TensorApi.KERAS:
-            ret = self.init_keras(f_construct_keras_model=self.f_construct_keras_model)
+        if self.mode == TensorApi.KERAS:
+            ret = self.delegate.restart_session()
             if ret != 0:
                 return ret
         else:
             return ERROR_TF_META_UNIMPLEMENTED
 
-        self.mode = before
-
         return 0
 
     def init_keras(self, f_construct_keras_model=None):
+        # TODO this big block needs to move to a function of KerasModel
+        #  so it can restart the underlying keras model on its own
+        assert self.delegate is None
+
         logger.debug('%s Clearing keras session...', self.log_prefix())
         keras.backend.clear_session()
 
@@ -235,9 +230,10 @@ class MetaModel(AbstractTensorModel):
 
         return ret
 
-    def freeze_graph(self):
+    def freeze_graph(self, filepath_pb=None):
         if self.mode == TensorApi.KERAS:
-            return self.delegate.freeze_graph()
+            filepath_pb = filepath_pb or self.filepath_pb()
+            return self.delegate.freeze_graph(filepath_pb)
         else:
             return ERROR_TF_META_UNIMPLEMENTED
 
@@ -252,11 +248,11 @@ class MetaModel(AbstractTensorModel):
         if self.mode == TensorApi.KERAS:
             if mode == TensorApi.TENSORFLOW:
                 logger.debug('%s Converting to %s...', self.log_prefix(), EXTENSION_PB)
-                return self.freeze_graph()
+                return self.freeze_graph(self.filepath_pb())
 
             elif mode == TensorApi.TF_LITE:
                 logger.debug('%s Converting to %s...', self.log_prefix(), EXTENSION_INT8_TFLITE)
-                return MetaModelModeConverter(self).save_tflite(representative_data)
+                self.delegate.save(self.filepath_tflite())
 
             else:
                 assert 1 == 0, 'Unexpected mode: %s' % mode
@@ -324,65 +320,3 @@ class MetaModelFactory:
         if ret != 0:
             return ret, None
         return 0, model
-
-
-class MetaModelModeConverter:
-
-    def __init__(self, meta_model):
-        assert isinstance(meta_model, MetaModel)
-        self.meta_model = meta_model
-
-    def save_tflite(self, representative_data, use_h5=True):
-        assert self.meta_model.mode == TensorApi.KERAS, 'Must be in KERAS mode to save tflite'
-
-        if use_h5:
-            log_prefix = '%s %s' % (self.meta_model.log_prefix(), ' [BatchN workaround]')
-            # seems to be required or we get errors with BatchNormalization
-            h5_filepath = self.meta_model.filepath_h5()
-            logger.warn('%s Creating TFLiteConverter from %s...', log_prefix, h5_filepath)
-            if not os.path.exists(h5_filepath):
-                logger.error('File not found: %s', h5_filepath)
-                return ERROR_TF_META_FILE_NOT_FOUND
-
-            converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file(h5_filepath)
-            # above call clears the keras session, so we need to reload our model
-            if self.meta_model.mode == TensorApi.KERAS:
-                logger.info('%s Reloading...', log_prefix)
-                self.meta_model.reload()
-        else:
-            # This works for non-BatchNormalization
-            # prefer this since if we use from_keras_model_file() then it clears the session
-            logger.debug('%s Creating TFLiteConverter from existing keras session...', self.meta_model.log_prefix())
-            converter = tf.lite.TFLiteConverter.from_session(keras.backend.get_session(),
-                                                             self.meta_model.delegate.keras_model.inputs,
-                                                             self.meta_model.delegate.keras_model.outputs)
-
-        def representative_dataset_gen():
-            for i in range(1000):
-                yield [representative_data[i: i + 1].astype(np.float32)]
-
-        converter.representative_dataset = representative_dataset_gen
-
-        # throws error if conversion not available
-        target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-        if tf.__version__[0] == '2':
-            converter.target_spec.supported_ops = target_ops
-        else:
-            converter.target_ops = target_ops
-        converter.inference_input_type = tf.uint8
-        converter.inference_output_type = tf.uint8
-        converter.optimizations = [tf.lite.Optimize.DEFAULT]  # seems that result file has same size no matter what
-
-        logger.debug('%s Converting to tflite INT8 model...', self.meta_model.log_prefix())
-        try:
-            tflite_model = converter.convert()
-        except Exception as e:
-            logger.exception('%s Caught exception while converting model to tflite INT8: %s',
-                             self.meta_model.log_prefix(), e)
-            return ERROR_TF_META_CAUGHT_EXCEPTION
-        tflite_filepath = self.meta_model.filepath_tflite()
-        logger.debug('%s Saving tflite model to %s...', self.meta_model.log_prefix(), tflite_filepath)
-        with open(tflite_filepath, 'wb') as o_:
-            o_.write(tflite_model)
-
-        return 0
