@@ -28,7 +28,8 @@ class KerasModel(AbstractTensorModel):
         super().__init__(name, metadata, mode=TensorApi.KERAS)
 
         # keras Model
-        assert keras_model is not None and isinstance(keras_model, keras.Model)
+        assert keras_model is not None and isinstance(keras_model, keras.Model),\
+            'Expected keras.Model but got: %s' % keras_model
         self.keras_model = keras_model
 
 
@@ -192,8 +193,8 @@ class KerasModel(AbstractTensorModel):
 
         return 0
 
-    def _reload_keras_model(self):
-        if self.f_construct_keras_model is not None:
+    def _reload_keras_model(self, force_h5=False):
+        if not force_h5 and self.f_construct_keras_model is not None:
             self.keras_model = self.f_construct_keras_model()
 
             filepath_weights_h5 = self.filepath_weights_h5(self.metadata.epoch)
@@ -247,7 +248,7 @@ class KerasModel(AbstractTensorModel):
 
         return 0
 
-    def freeze_session(self, keep_var_names=None, output_names=None, clear_devices=True):
+    def freeze_session(self, dir=None, keep_var_names=None, output_names=None, clear_devices=True):
         """
         Freezes the state of a session into a pruned computation graph.
 
@@ -295,7 +296,7 @@ class KerasModel(AbstractTensorModel):
 
             logger.debug('%s Saving frozen graph to %s...', self.log_prefix(), self.filepath_pb(self.metadata.epoch))
             try:
-                tf.io.write_graph(frozen_graph, self.file_dir(self.metadata.epoch),
+                tf.io.write_graph(frozen_graph, dir or self.file_dir(self.metadata.epoch),
                                   self.filename_pb(self.metadata.epoch), as_text=False)
             except Exception as e:
                 logger.exception('Caught exception while saving frozen graph: %s', e)

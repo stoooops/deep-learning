@@ -81,37 +81,37 @@ class AbstractTensorModel(ABC):
     def filename_h5(self, epoch):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_H5)
 
-    def filepath_h5(self, epoch):
-        return os.path.join(self.file_dir(epoch), self.filename_h5(epoch))
+    def filepath_h5(self, epoch, dir=None):
+        return os.path.join(dir or self.file_dir(epoch), self.filename_h5(epoch))
 
     # .h5 - architecture/weights
 
     def filename_no_opt_h5(self, epoch):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_ARCH_WEIGHTS_H5)
 
-    def filepath_no_opt_h5(self, epoch):
-        return os.path.join(self.file_dir(epoch), self.filename_no_opt_h5(epoch))
+    def filepath_no_opt_h5(self, epoch, dir=None):
+        return os.path.join(dir or self.file_dir(epoch), self.filename_no_opt_h5(epoch))
 
     # .h5 - weights
 
     def filename_weights_h5(self, epoch):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_WEIGHTS_H5)
 
-    def filepath_weights_h5(self, epoch):
-        return os.path.join(self.file_dir(epoch), self.filename_weights_h5(epoch))
+    def filepath_weights_h5(self, epoch, dir=None):
+        return os.path.join(dir or self.file_dir(epoch), self.filename_weights_h5(epoch))
 
     # .pb
 
     def filename_pb(self, epoch):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_PB)
 
-    def filepath_pb(self, epoch):
-        return os.path.join(self.file_dir(epoch), self.filename_pb(epoch))
+    def filepath_pb(self, epoch, dir=None):
+        return os.path.join(dir or self.file_dir(epoch), self.filename_pb(epoch))
 
     # .tflite - INT8
 
     def filename_tflite(self, epoch):
         return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_INT8_TFLITE)
 
-    def filepath_tflite(self, epoch):
-        return os.path.join(self.file_dir(epoch), self.filename_tflite(epoch))
+    def filepath_tflite(self, epoch, dir=None):
+        return os.path.join(dir or self.file_dir(epoch), self.filename_tflite(epoch))

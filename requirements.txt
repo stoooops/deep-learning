@@ -1,6 +1,7 @@
 absl-py==0.7.1
 aenum==2.2.1
 astor==0.8.0
+atomicwrites==1.3.0
 attrs==19.1.0
 backcall==0.1.0
 bleach==3.1.0
@@ -12,6 +13,7 @@ gast==0.2.2
 google-pasta==0.1.7
 grpcio==1.22.0
 h5py==2.9.0
+importlib-metadata==0.19
 ipdb==0.12.2
 ipykernel==5.1.1
 ipython==7.7.0
@@ -32,21 +34,26 @@ Markdown==3.1.1
 MarkupSafe==1.1.1
 matplotlib==3.1.1
 mistune==0.8.4
+more-itertools==7.2.0
 nbconvert==5.5.0
 nbformat==4.4.0
 notebook==6.0.0
 numpy==1.17.0
+packaging==19.1
 pandocfilters==1.4.2
 parso==0.5.1
 pexpect==4.7.0
 pickleshare==0.7.5
+pluggy==0.12.0
 prometheus-client==0.7.1
 prompt-toolkit==2.0.9
 protobuf==3.9.0
 ptyprocess==0.6.0
+py==1.8.0
 Pygments==2.4.2
 pyparsing==2.4.2
 pyrsistent==0.15.4
+pytest==5.0.1
 python-dateutil==2.8.0
 PyYAML==5.1.2
 pyzmq==18.0.2
@@ -67,3 +74,4 @@ webencodings==0.5.1
 Werkzeug==0.15.5
 widgetsnbextension==3.5.1
 wrapt==1.11.2
+zipp==0.5.2
