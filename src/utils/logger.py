@@ -2,6 +2,7 @@
 
 import os
 import sys
+import argparse
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from src.utils.file_utils import LOG_DIR
@@ -14,8 +15,16 @@ from src.utils.color_utils import bcolors
 logging._levelToName[logging.WARNING] = 'WARN'
 logging._levelToName[logging.CRITICAL] = 'FATAL'
 
+p = argparse.ArgumentParser()
+p.add_argument('--log-dir', '--epochs', type=str, default=LOG_DIR, help='Log directory. default=%s' % LOG_DIR)
+_args, _unknown = p.parse_known_args()
 
-FILENAME = os.path.normpath(os.path.join(LOG_DIR, 'huli.log'))
+if not os.path.exists(_args.log_dir):
+    # ensure directory exists
+    os.makedirs(_args.log_dir)
+
+
+FILENAME = os.path.normpath(os.path.join(_args.log_dir, 'application.log'))
 
 
 class Logging:

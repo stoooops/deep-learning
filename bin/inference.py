@@ -181,7 +181,7 @@ def get_args():
     p.add_argument('--skip-tflite', default=not DEFAULT_TFLITE_INFERENCE, help='Skip tflite inference',
                    action="store_true")
     p.add_argument('--skip-trt', default=not DEFAULT_TRT_INFERENCE, help='Skip trt inference', action="store_true")
-    args = p.parse_args()
+    args, unknown = p.parse_known_args()
     assert args.model in MODEL_NAMES
     assert args.epoch > 0
     assert args.warm_up >= 0

@@ -163,7 +163,7 @@ def get_args():
     p.add_argument('-m', '--model', required=True, default=NAME_BASIC, help='Model name. One of %s' % MODEL_NAMES)
     p.add_argument('--skip-pb', default=False, help='Skip pb serialization', action="store_true")
     p.add_argument('--skip-tflite', default=False, help='Skip tflite serialization', action="store_true")
-    args = p.parse_args()
+    args, unknown = p.parse_known_args()
     assert args.model in MODEL_NAMES
     assert args.epochs > args.initial_epoch
     return args
