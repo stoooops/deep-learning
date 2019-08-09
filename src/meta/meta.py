@@ -206,7 +206,6 @@ class MetaModel(AbstractTensorModel):
 
         return ret
 
-
     def freeze_session(self):
         if self.mode == TensorApi.KERAS:
             return self.delegate.freeze_session()
