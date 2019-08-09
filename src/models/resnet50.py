@@ -17,5 +17,4 @@ def construct_resnet50_model(input_shape, output_length):
     keras_model.add(resnet50)
     keras_model.add(keras.layers.Dense(output_length, activation='softmax', name='fc%d' % output_length))
 
-    keras_model = KerasModel(NAME, keras_model, epoch=0)
-    return MetaModel(NAME, epoch=0, delegate=keras_model)
+    return keras_model

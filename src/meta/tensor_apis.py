@@ -23,7 +23,7 @@ class TensorApi(UniqueEnum):
 
 class AbstractTensorModel(ABC):
 
-    def __init__(self, name, metadata):
+    def __init__(self, name, metadata, mode=TensorApi.NONE):
         # name
         assert name is not None and isinstance(name, str)
         self.name = name
@@ -31,6 +31,10 @@ class AbstractTensorModel(ABC):
         # metadata
         assert metadata is not None and isinstance(metadata, Metadata)
         self.metadata = metadata
+
+        # mode
+        assert mode is not None and isinstance(mode, TensorApi)
+        self.mode = mode
 
     @abstractmethod
     def compile(self):
@@ -55,6 +59,9 @@ class AbstractTensorModel(ABC):
     @abstractmethod
     def dump(self):
         pass
+
+    def log_prefix(self):
+        return '[%s|%s|%s]' % (self.name, self.metadata.epoch, self.mode)
 
     # Directory
 

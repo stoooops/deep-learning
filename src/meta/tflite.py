@@ -21,7 +21,7 @@ class TfLiteModel(AbstractTensorModel):
         :type tflite_interpreter: tensorflow.lite.Interpreter
         :type metadata: Metadata
         """
-        super().__init__(name, metadata)
+        super().__init__(name, metadata, mode=TensorApi.TF_LITE)
 
         # tf.lite Interpreter
         assert tflite_interpreter is not None and isinstance(tflite_interpreter, tf.lite.Interpreter)
@@ -31,8 +31,6 @@ class TfLiteModel(AbstractTensorModel):
 
         self.f_quantize_in = quantize_in
         self.f_quantize_out = quantize_out
-
-        self.mode = TensorApi.TF_LITE
 
     def compile(self):
         return ERROR_TF_META_UNIMPLEMENTED
@@ -67,12 +65,12 @@ class TfLiteModel(AbstractTensorModel):
         input_detail = self.tflite_interpreter.get_input_details()[0]
         in_std, in_mean = input_detail['quantization']
         in_index = input_detail['index']
-        logger.debug('%s Input mean, std, index: %s, %s, %s', self.name, in_mean, in_std, in_index)
+        logger.debug('%s Input mean, std, index: %s, %s, %s', self.log_prefix(), in_mean, in_std, in_index)
 
         output_detail = self.tflite_interpreter.get_output_details()[0]
         out_std, out_mean = output_detail['quantization']
         out_index = output_detail['index']
-        logger.debug('%s Output mean, std, index: %s, %s, %s', self.name, out_mean, out_std, out_index)
+        logger.debug('%s Output mean, std, index: %s, %s, %s', self.log_prefix(), out_mean, out_std, out_index)
 
         return 0
 

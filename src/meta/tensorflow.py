@@ -22,7 +22,7 @@ class TensorFlowModel(AbstractTensorModel):
         :type graph_def: tensorflow.GraphDef
         :type epoch: int
         """
-        super().__init__(name, metadata)
+        super().__init__(name, metadata, mode=TensorApi.TENSORFLOW)
 
         # GraphDef
         assert graph_def is not None and isinstance(graph_def, tf.GraphDef),\
@@ -44,8 +44,6 @@ class TensorFlowModel(AbstractTensorModel):
         assert self.metadata.output_names is not None and len(self.metadata.output_names) > 0
         self.output_names = [self.name + '/' + output_name for output_name in self.metadata.output_names]
         self.graph_y = [self.graph.get_tensor_by_name(name) for name in self.output_names]
-
-        self.mode = TensorApi.TENSORFLOW
 
     def compile(self):
         return ERROR_TF_META_UNIMPLEMENTED
@@ -85,10 +83,10 @@ class TensorFlowModel(AbstractTensorModel):
 
     def dump(self):
         graph_node_names = [n.name for n in self.graph_def.node]
-        logger.debug('%s graph_def.node names: %s', self.name, graph_node_names)
+        logger.debug('%s graph_def.node names: %s', self.log_prefix(), graph_node_names)
 
         operations = self.graph.get_operations()
-        logger.debug('%s graph.get_operations(): [%d] %s', self.name, len(operations), [o.name for o in operations])
+        logger.debug('%s graph.get_operations(): [%d] %s', self.log_prefix(), len(operations), [o.name for o in operations])
 
         return 0
 

@@ -22,7 +22,7 @@ class Metadata:
         self.input_names = input_names
         self.output_names = output_names
 
-    def dump(self):
-        logger.debug('%s epoch = %s', self.name, self.epoch)
-        logger.debug('%s inputs = %s', self.name, self.input_names)
-        logger.debug('%s outputs = %s', self.name, self.output_names)
+    def dump(self, prefix=None):
+        logger.debug('%s epoch = %s', prefix or self.name, self.epoch)
+        logger.debug('%s inputs = %s', prefix or self.name, self.input_names)
+        logger.debug('%s outputs = %s', prefix or self.name, self.output_names)

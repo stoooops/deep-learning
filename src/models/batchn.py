@@ -18,5 +18,4 @@ def construct_batchn_model(input_shape, output_length):
     x = keras.layers.Dense(output_length, activation='softmax', name='fc%d' % output_length)(x)
     keras_model = keras.models.Model(inputs, x, name=NAME)
 
-    keras_model = KerasModel(NAME, keras_model, epoch=0)
-    return MetaModel(NAME, epoch=0, delegate=keras_model)
+    return keras_model
