@@ -5,8 +5,9 @@ import os
 from datetime import datetime
 import tensorflow as tf
 
-from src.meta.constants import TENSORBOARD_DIR, UNKNOWN_EPOCH
+from src.meta.constants import TENSORBOARD_DIR
 from src.meta.errors import *
+from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.logger import HuliLogging
 
@@ -15,16 +16,13 @@ logger = HuliLogging.get_logger(__name__)
 
 class TensorFlowModel(AbstractTensorModel):
 
-    def __init__(self, name, input_names, output_names, graph_def, graph, epoch=UNKNOWN_EPOCH):
+    def __init__(self, name, metadata, graph_def, graph):
         """
         :type name: str
         :type graph_def: tensorflow.GraphDef
         :type epoch: int
         """
-        super().__init__(name)
-
-        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 1)
-        self.epoch = epoch
+        super().__init__(name, metadata)
 
         # GraphDef
         assert graph_def is not None and isinstance(graph_def, tf.GraphDef),\
@@ -36,11 +34,15 @@ class TensorFlowModel(AbstractTensorModel):
             'Expected tf.Graph but got: %s' % graph
         self.graph = graph
 
-        self.input_names = [self.name + '/' + input_name for input_name in input_names]
+        # input x
+        assert self.metadata.input_names is not None and len(self.metadata.input_names) > 0
+        self.input_names = [self.name + '/' + input_name for input_name in self.metadata.input_names]
         self.graph_x = [self.graph.get_tensor_by_name(name) for name in self.input_names]
         assert len(self.graph_x) == 1, 'MULTIPLE INPUTS NOT SUPPORTED YET.'
         self.graph_x = self.graph_x[0]
-        self.output_names = [self.name + '/' + output_name for output_name in output_names]
+        # output y
+        assert self.metadata.output_names is not None and len(self.metadata.output_names) > 0
+        self.output_names = [self.name + '/' + output_name for output_name in self.metadata.output_names]
         self.graph_y = [self.graph.get_tensor_by_name(name) for name in self.output_names]
 
         self.mode = TensorApi.TENSORFLOW
@@ -91,7 +93,11 @@ class TensorFlowModel(AbstractTensorModel):
         return 0
 
     @staticmethod
-    def load(name, epoch, filepath, input_names, output_names):
+    def load(name, metadata, filepath):
+        assert name is not None and isinstance(name, str)
+        assert metadata is not None and isinstance(metadata, Metadata)
+        assert filepath is not None and isinstance(filepath, str)
+
         logger.debug('%s Loading frozen graph model from %s...', name, filepath)
 
         tf.reset_default_graph()
@@ -114,6 +120,6 @@ class TensorFlowModel(AbstractTensorModel):
         logger.debug('%s pb model imported into tensorboard. Visualize by running: ', name)
         logger.debug('> tensorboard --logdir=%s', tensorboard_log_dir)
 
-        result = TensorFlowModel(name, input_names, output_names, graph_def, sess.graph, epoch=epoch)
+        result = TensorFlowModel(name, metadata, graph_def, sess.graph)
 
         return 0, result

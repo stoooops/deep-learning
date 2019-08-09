@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from aenum import UniqueEnum
 
 from src.meta.constants import *
+from src.meta.metadata import Metadata
 from src.utils.file_utils import MODELS_DIR
 
 
@@ -22,9 +23,14 @@ class TensorApi(UniqueEnum):
 
 class AbstractTensorModel(ABC):
 
-    def __init__(self, name):
+    def __init__(self, name, metadata):
+        # name
         assert name is not None and isinstance(name, str)
         self.name = name
+
+        # metadata
+        assert metadata is not None and isinstance(metadata, Metadata)
+        self.metadata = metadata
 
     @abstractmethod
     def compile(self):

@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from src.meta.constants import UNKNOWN_EPOCH
 from src.meta.errors import *
+from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.logger import HuliLogging
 
@@ -14,16 +15,13 @@ logger = HuliLogging.get_logger(__name__)
 
 class TfLiteModel(AbstractTensorModel):
 
-    def __init__(self, name, tflite_interpreter, quantize_in, quantize_out, epoch=UNKNOWN_EPOCH):
+    def __init__(self, name, metadata, tflite_interpreter, quantize_in, quantize_out, epoch=UNKNOWN_EPOCH):
         """
         :type name: str
         :type tflite_interpreter: tensorflow.lite.Interpreter
-        :type epoch: int
+        :type metadata: Metadata
         """
-        super().__init__(name)
-
-        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 1)
-        self.epoch = epoch
+        super().__init__(name, metadata)
 
         # tf.lite Interpreter
         assert tflite_interpreter is not None and isinstance(tflite_interpreter, tf.lite.Interpreter)
@@ -79,7 +77,11 @@ class TfLiteModel(AbstractTensorModel):
         return 0
 
     @staticmethod
-    def load(name, epoch, filepath):
+    def load(name, metadata, filepath):
+        assert name is not None and isinstance(name, str)
+        assert metadata is not None and isinstance(metadata, Metadata)
+        assert filepath is not None and isinstance(filepath, str)
+
         logger.debug('%s Loading tflite interpreter from %s...', name, filepath)
         if os.path.exists(filepath):
             tflite_interpreter = tf.lite.Interpreter(model_path=filepath)
@@ -103,7 +105,7 @@ class TfLiteModel(AbstractTensorModel):
             def quantize_out(real_value):
                 return _scaled_to_real(real_value.astype(np.float32), tflite_out_mean, tflite_out_std)
 
-            result = TfLiteModel(name, tflite_interpreter, quantize_in, quantize_out, epoch=epoch)
+            result = TfLiteModel(name, metadata, tflite_interpreter, quantize_in, quantize_out)
 
             return 0, result
         else:

@@ -6,8 +6,9 @@ import tensorflow as tf
 from tensorflow import keras
 
 from datetime import datetime
-from src.meta.constants import EXTENSION_H5, TENSORBOARD_DIR, UNKNOWN_EPOCH
+from src.meta.constants import EXTENSION_H5, TENSORBOARD_DIR
 from src.meta.errors import *
+from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.logger import HuliLogging
 
@@ -18,22 +19,31 @@ logger = HuliLogging.get_logger(__name__)
 
 class KerasModel(AbstractTensorModel):
 
-    def __init__(self, name, keras_model, epoch=UNKNOWN_EPOCH):
+    def __init__(self, name, metadata, keras_model):
         """
         :type name: str
+        :type metadata: Metadata
         :type keras_model: keras.Model
         :type epoch: int
         """
-        super().__init__(name)
-
-        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 0)
-        self.epoch = epoch
+        super().__init__(name, metadata)
 
         # keras Model
         assert keras_model is not None and isinstance(keras_model, keras.Model)
         self.keras_model = keras_model
-        self.input_names = [op.name for op in self.keras_model.inputs]
-        self.output_names = [op.name for op in self.keras_model.outputs]
+
+
+        input_names = [op.name for op in self.keras_model.inputs]
+        if self.metadata.input_names is not None:
+            assert input_names == self.metadata.input_names,\
+                'Mismatch input names: given=%s vs computed=%s' % (self.metadata.input_names, input_names)
+        self.metadata.input_names = input_names
+
+        output_names = [op.name for op in self.keras_model.outputs]
+        if self.metadata.output_names is not None:
+            assert output_names == self.metadata.output_names,\
+                'Mismatch output names: given=%s vs computed=%s' % (self.metadata.output_names, output_names)
+        self.metadata.output_names = output_names
 
         # tensorboard callback
         tensor_board_log_dir = os.path.join(TENSORBOARD_DIR,
@@ -90,7 +100,7 @@ class KerasModel(AbstractTensorModel):
         if ret != 0:
             return ret, None
 
-        self.epoch = epochs
+        self.metadata.epoch = epochs
         return ret, history
 
     def evaluate(self, *argv, **kwargs):
@@ -180,7 +190,7 @@ class KerasModel(AbstractTensorModel):
         """
         # Save model to disk
         logger.debug('%s Saving h5 file so we can restart and reload session...', self.name)
-        filepath_h5 = self.filepath_h5(self.epoch)
+        filepath_h5 = self.filepath_h5(self.metadata.epoch)
         ret = self.save(filepath_h5)
         if ret != 0:
             logger.error('%s Failed saving keras model to %s due to error %d', self.name, filepath_h5, ret)
@@ -226,10 +236,11 @@ class KerasModel(AbstractTensorModel):
         # Now do freeze
 
         # Refer https://stackoverflow.com/a/45466355/2079993
-        session = keras.backend.get_session()
+        session = tf.compat.v1.keras.backend.get_session()
         graph = session.graph
         with graph.as_default():
-            freeze_var_names = list(set(v.op.name for v in tf.global_variables()).difference(keep_var_names or []))
+            freeze_var_names =\
+                list(set(v.op.name for v in tf.compat.v1.global_variables()).difference(keep_var_names or []))
             logger.debug('%s Frozen graph has var names: %s', self.name, freeze_var_names)
             # tweaked here
             output_names = output_names or [out.op.name for out in self.keras_model.outputs]
@@ -242,16 +253,16 @@ class KerasModel(AbstractTensorModel):
                     node.device = ""
 
             try:
-                frozen_graph = tf.graph_util.convert_variables_to_constants(session, input_graph_def, output_names,
-                                                                            freeze_var_names)
+                frozen_graph = tf.compat.v1.graph_util.convert_variables_to_constants(session, input_graph_def,
+                                                                                      output_names, freeze_var_names)
             except Exception as e:
                 logger.exception(e)
                 return ERROR_TF_META_CAUGHT_EXCEPTION
 
-            logger.debug('%s Saving frozen graph to %s...', self.name, self.filepath_pb(self.epoch))
+            logger.debug('%s Saving frozen graph to %s...', self.name, self.filepath_pb(self.metadata.epoch))
             try:
-                tf.train.write_graph(frozen_graph, self.file_dir(self.epoch), self.filename_pb(self.epoch),
-                                     as_text=False)
+                tf.io.write_graph(frozen_graph, self.file_dir(self.metadata.epoch),
+                                  self.filename_pb(self.metadata.epoch), as_text=False)
             except Exception as e:
                 logger.exception(e)
                 return ERROR_TF_META_CAUGHT_EXCEPTION
@@ -267,6 +278,7 @@ class KerasModel(AbstractTensorModel):
 
     @staticmethod
     def _load_keras_model(filepath):
+        assert filepath is not None and isinstance(filepath, str)
         try:
             keras_model = keras.models.load_model(filepath)
         except IOError as e:
@@ -279,13 +291,15 @@ class KerasModel(AbstractTensorModel):
         return 0, keras_model
 
     @staticmethod
-    def load(name, epoch, filepath):
-        logger.debug('%s Loading keras model from %s...', name, filepath)
+    def load(name, metadata, filepath):
+        assert name is not None and isinstance(name, str)
+        assert metadata is not None and isinstance(metadata, Metadata)
+        assert filepath is not None and isinstance(filepath, str)
 
         ret, keras_model = KerasModel._load_keras_model(filepath)
         if ret != 0:
             return ret, None
 
-        result = KerasModel(name, keras_model, epoch=epoch)
+        result = KerasModel(name, metadata, keras_model)
 
         return 0, result

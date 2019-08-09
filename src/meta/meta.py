@@ -4,10 +4,12 @@ import os
 
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 
 from src.meta.constants import UNKNOWN_EPOCH
 from src.meta.errors import *
 from src.meta.keras import KerasModel
+from src.meta.metadata import Metadata
 from src.meta.tensorflow import TensorFlowModel
 from src.meta.tflite import TfLiteModel
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
@@ -22,17 +24,12 @@ SUPPORTED_MODES = [TensorApi.NONE, TensorApi.KERAS, TensorApi.TENSORFLOW, Tensor
 
 class MetaModel(AbstractTensorModel):
 
-    def __init__(self, name, epoch=UNKNOWN_EPOCH, delegate=None):
-        super().__init__(name)
+    def __init__(self, name, metadata, delegate=None):
+        super().__init__(name, metadata)
         self.mode = TensorApi.NONE
-
-        assert isinstance(epoch, int) and (epoch == UNKNOWN_EPOCH or epoch >= 0)
-        self.epoch = epoch
 
         assert delegate is None or isinstance(delegate, AbstractTensorModel)
         self.delegate = None
-        self.input_names = None
-        self.output_names = None
         if delegate is not None:
             self.attach_delegate(delegate)
 
@@ -45,8 +42,6 @@ class MetaModel(AbstractTensorModel):
 
         if delegate.mode == TensorApi.KERAS:
             assert isinstance(delegate, KerasModel)
-            self.input_names = delegate.input_names
-            self.output_names = delegate.output_names
         elif delegate.mode == TensorApi.TENSORFLOW:
             assert isinstance(delegate, TensorFlowModel)
         elif delegate.mode == TensorApi.TF_LITE:
@@ -65,26 +60,28 @@ class MetaModel(AbstractTensorModel):
     def fit(self, *argv, **kwargs):
         # get epoch
         epochs = kwargs.get('epochs', 1)
-        # get initial_epoch, falling back to self.epoch if not sef
+        # get initial_epoch, falling back to self.metadata.epoch if not set
         initial_epoch = kwargs.get('initial_epoch')
         if initial_epoch is None:
-            initial_epoch = self.epoch
-            logger.debug('%s Assuming initial_epoch = %d', initial_epoch)
+            initial_epoch = self.metadata.epoch
+            logger.debug('%s Assuming initial_epoch = %d', self.name, initial_epoch)
             kwargs['initial_epoch'] = initial_epoch
 
         # validate input
         if initial_epoch >= epochs:
             logger.error('Bad input for state: initial_epoch = %d >= %d = epochs', initial_epoch, epochs)
             return ERROR_TF_META_BAD_INPUT, None
-        if self.epoch != UNKNOWN_EPOCH and self.epoch != initial_epoch:
-            logger.error('Bad input for state: self.epoch = %d != %d = initial_epoch', self.epoch, initial_epoch)
+        if self.metadata.epoch != UNKNOWN_EPOCH and self.metadata.epoch != initial_epoch:
+            logger.error('Bad input for state: self.metadata.epoch = %d != %d = initial_epoch', self.metadata.epoch,
+                         initial_epoch)
             return ERROR_TF_META_BAD_INPUT, None
 
         ret, history = self.delegate.fit(*argv, **kwargs)
         if ret != 0:
             return ret, history
 
-        self.epoch = epochs
+        assert epochs - 1 <= self.metadata.epoch <= epochs  # safety check (delegate model may update this too)
+        self.metadata.epoch = epochs
         return ret, history
 
     def evaluate(self, *argv, **kwargs):
@@ -96,7 +93,7 @@ class MetaModel(AbstractTensorModel):
     def save(self, **kwargs):
         assert self.mode == TensorApi.KERAS  # TODO improve state logic
 
-        filepath = self.filepath_h5(self.epoch) if self.mode == TensorApi.KERAS else None
+        filepath = self.filepath_h5(self.metadata.epoch) if self.mode == TensorApi.KERAS else None
         logger.debug('%s Saving keras model to %s...', self.name, filepath)
         ret = self.delegate.save(filepath, **kwargs)
         if ret != 0:
@@ -104,7 +101,7 @@ class MetaModel(AbstractTensorModel):
 
         if self.mode == TensorApi.KERAS:
             # save weights
-            filepath_weights = self.filepath_weights_h5(self.epoch)
+            filepath_weights = self.filepath_weights_h5(self.metadata.epoch)
             logger.debug('%s Saving keras model weights to %s...', self.name, filepath_weights)
             ret = self.delegate.save_weights(filepath_weights, **kwargs)
             if ret != 0:
@@ -112,7 +109,7 @@ class MetaModel(AbstractTensorModel):
 
             # unless explicitly passed in as include_optimizer=True, then also store without the optimizer info
             if not kwargs.get('include_optimizer', False):
-                filepath_no_opt = self.filepath_no_opt_h5(self.epoch)
+                filepath_no_opt = self.filepath_no_opt_h5(self.metadata.epoch)
                 logger.debug('%s Saving keras model without optimizer to %s...', self.name, filepath_no_opt)
                 kwargs['include_optimizer'] = True
                 ret = self.delegate.save(filepath_no_opt, **kwargs)
@@ -125,9 +122,7 @@ class MetaModel(AbstractTensorModel):
         gpu_info()
 
         logger.debug('%s mode = %s', self.name, self.mode)
-        logger.debug('%s epoch = %s', self.name, self.epoch)
-        logger.debug('%s inputs = %s', self.name, self.input_names)
-        logger.debug('%s outputs = %s', self.name, self.output_names)
+        self.metadata.dump()
 
         ret = 0
         if self.mode != TensorApi.NONE:
@@ -152,7 +147,9 @@ class MetaModel(AbstractTensorModel):
         self.mode = TensorApi.NONE
 
         if before == TensorApi.KERAS:
-            ret, keras_model = KerasModel.load(self.name, self.epoch, self.filepath_h5(self.epoch))
+            filepath_h5 = self.filepath_h5(self.metadata.epoch)
+            logger.debug('%s Re-loading keras model from %s...', self.name, filepath_h5)
+            ret, keras_model = KerasModel.load(self.name, self.metadata, filepath_h5)
             if ret != 0:
                 return ERROR_TF_META_FAILED_RELOAD
             self.delegate = keras_model
@@ -164,7 +161,7 @@ class MetaModel(AbstractTensorModel):
         return 0
 
     def init_keras(self):
-        ret, keras_model = KerasModel.load(self.name, self.epoch, self.filepath_h5(self.epoch))
+        ret, keras_model = KerasModel.load(self.name, self.metadata, self.filepath_h5(self.metadata.epoch))
         if ret != 0:
             return ret
 
@@ -172,7 +169,7 @@ class MetaModel(AbstractTensorModel):
         return 0
 
     def init_tflite(self):
-        ret, tflite_model = TfLiteModel.load(self.name, self.epoch, self.filepath_tflite(self.epoch))
+        ret, tflite_model = TfLiteModel.load(self.name, self.metadata, self.filepath_tflite(self.metadata.epoch))
         if ret != 0:
             return ret
 
@@ -180,9 +177,8 @@ class MetaModel(AbstractTensorModel):
         return 0
 
     def init_pb(self):
-        assert self.input_names is not None and self.output_names is not None
-        ret, tf_model = TensorFlowModel.load(self.name, self.epoch, self.filepath_pb(self.epoch), self.input_names,
-                                             self.output_names)
+        assert self.metadata.input_names is not None and self.metadata.output_names is not None
+        ret, tf_model = TensorFlowModel.load(self.name, self.metadata, self.filepath_pb(self.metadata.epoch))
         if ret != 0:
             return ret
 
@@ -259,7 +255,8 @@ class MetaModelFactory:
 
     @staticmethod
     def from_h5(name, epoch):
-        model = MetaModel(name, epoch=epoch)
+        metadata = Metadata(name, epoch=epoch)
+        model = MetaModel(name, metadata)
         ret = model.init_keras()
         if ret != 0:
             return ret, None
@@ -267,7 +264,8 @@ class MetaModelFactory:
 
     @staticmethod
     def from_pb(name, epoch):
-        model = MetaModel(name, epoch=epoch)
+        metadata = Metadata(name, epoch=epoch)
+        model = MetaModel(name, metadata)
         ret = model.init_pb()
         if ret != 0:
             return ret, None
@@ -276,7 +274,8 @@ class MetaModelFactory:
 
     @staticmethod
     def from_tflite(name, epoch):
-        model = MetaModel(name, epoch=epoch)
+        metadata = Metadata(name, epoch=epoch)
+        model = MetaModel(name, metadata)
         ret = model.init_tflite()
         if ret != 0:
             return ret, None
@@ -293,15 +292,11 @@ class MetaModelModeConverter:
         return self.meta_model.freeze_session()
 
     def save_tflite(self, representative_data):
-        h5_filepath = self.meta_model.filepath_h5(self.meta_model.epoch)
-        if not os.path.exists(h5_filepath):
-            logger.error('File not found: %s', h5_filepath)
-            return ERROR_TF_META_FILE_NOT_FOUND
-
-        converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file(h5_filepath)
-        # above call clears the keras session, so we need to reload our model
-        if self.meta_model.mode == TensorApi.KERAS:
-            self.meta_model.reload()
+        assert self.meta_model.mode == TensorApi.KERAS, 'Must be in KERAS mode to save tflite'
+        # if we use from_keras_model_file() then it clears the session
+        converter = tf.lite.TFLiteConverter.from_session(keras.backend.get_session(),
+                                                         self.meta_model.delegate.keras_model.inputs,
+                                                         self.meta_model.delegate.keras_model.outputs)
 
         def representative_dataset_gen():
             for i in range(1000):
@@ -321,7 +316,7 @@ class MetaModelModeConverter:
 
         logger.info('%s Converting to tflite INT8 model...', self.meta_model.name)
         tflite_model = converter.convert()
-        tflite_filepath = self.meta_model.filepath_tflite(self.meta_model.epoch)
+        tflite_filepath = self.meta_model.filepath_tflite(self.meta_model.metadata.epoch)
         logger.info('%s Saving tflite model to %s...', self.meta_model.name, tflite_filepath)
         with open(tflite_filepath, 'wb') as o_:
             o_.write(tflite_model)
