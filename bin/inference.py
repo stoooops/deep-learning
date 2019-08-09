@@ -36,6 +36,21 @@ DEFAULT_TFLITE_INFERENCE = True
 DEFAULT_TRT_INFERENCE = False
 
 
+epoch = 0
+
+def line():
+    return '=' * 50
+
+
+def log_prefix():
+    global epoch
+    return '[%s|%d]' % ('train', epoch)
+
+
+def log_bold(*argv, **kwargs):
+    logger.info(log_prefix() + ' ' + line() + ' ' + argv[0] + ' ' + line(), *argv[1:], **kwargs)
+
+
 def get_time_format(num):
     return '%3d' if num >= 100 else '%2d' if num >= 10 else '%d'
 
@@ -82,8 +97,8 @@ def warm_up(model, test_images, trials, time_format):
         timings.append(p)
     elapsed = sum(timings)
     log_images_size = ('%d' % len(test_images)).ljust(5)
-    log_prefix = ('[' + time_format + 'x%s %s]') % (len(timings), log_images_size, model.mode)
-    logger.info('%s Warm up =   %.3fs (avg = %.3fs)' % (log_prefix, elapsed, elapsed / len(timings)))
+    log_prefix_ = ('%s [' + time_format + 'x%s %s]') % (log_prefix(), len(timings), log_images_size, model.mode)
+    logger.info('%s Warm up =   %.3fs (avg = %.3fs)' % (log_prefix_, elapsed, elapsed / len(timings)))
 
     return 0
 
@@ -93,7 +108,7 @@ def test(model, test_images, trials, repeat, time_format):
         phrase = 'single image'
     else:
         phrase = 'batch of %d images' % len(test_images)
-    logger.info('%s Repeat %dx timing on %s for %d iterations...' % (model.name, repeat, phrase, trials))
+    logger.info('%s %s Repeat %dx timing on %s for %d iterations...', log_prefix(), model.name, repeat, phrase, trials)
     for i in range(repeat):
         timings = []
         for ret, p in predict(model, test_images, trials):
@@ -102,8 +117,8 @@ def test(model, test_images, trials, repeat, time_format):
             timings.append(p)
         elapsed = sum(timings)
         log_images_size = ('%d' % len(test_images)).ljust(5)
-        log_prefix = ('[' + time_format + 'x%s %s]') % (len(timings), log_images_size, model.mode)
-        logger.info('%s Test time = %.3fs (avg = %.3fs)' % (log_prefix, elapsed, elapsed / len(timings)))
+        log_prefix_ = ('%s [' + time_format + 'x%s %s]') % (log_prefix(), len(timings), log_images_size, model.mode)
+        logger.info('%s Test time = %.3fs (avg = %.3fs)' % (log_prefix_, elapsed, elapsed / len(timings)))
 
     return 0
 
@@ -118,22 +133,28 @@ def infer(model, test_images, do_keras=DEFAULT_KERAS_INFERENCE, do_tensorflow=DE
         def run(mode):
             ret = model.change_mode(mode)
             if ret != 0:
-                logger.error('Changing to mode %s failed with error %d', TensorApi.KERAS, ret)
+                logger.error('%s Changing to mode %s failed with error %d', log_prefix(), TensorApi.KERAS, ret)
                 exit(1)
+            log_bold('WARM UP')
             ret = warm_up(model, test_images[:i], warm_up_trials, time_format)
             if ret != 0:
                 return ret
+            log_bold('TEST')
             ret = test(model, test_images[:i], trials, repeat, time_format)
             if ret != 0:
                 return ret
 
         if do_keras:
+            log_bold(str(TensorApi.KERAS))
             run(TensorApi.KERAS)
         if do_tensorflow:
+            log_bold(str(TensorApi.TENSORFLOW))
             run(TensorApi.TENSORFLOW)
         if do_tflite:
+            log_bold(str(TensorApi.TF_LITE))
             run(TensorApi.TF_LITE)
         if do_trt:
+            log_bold(str(TensorApi.TENSOR_RT))
             run(TensorApi.TENSOR_RT)
 
     return 0
@@ -164,28 +185,33 @@ def get_args():
 
 def main():
     # Args
+    log_bold('PARSE')
     args = get_args()
     model_name = args.model
+    global epoch
     epoch = args.epoch
     warm_up_trials = args.warm_up
     trials = args.trials
     repeat = args.repeat
 
     # Load Data
+    log_bold('DATA')
     (train_images, train_labels), (test_images, test_labels) = get_data()
 
     # Load Model
+    log_bold('MODEL')
     ret, model = get_model(model_name, epoch)
     if ret != 0:
-        logger.error('Getting model failed with error %d', ret)
+        logger.error('%s Getting model failed with error %d', log_prefix(), ret)
         exit(1)
     model.summary()
 
+    log_bold('INFER')
     ret = infer(model, test_images, do_keras=not args.skip_keras, do_tensorflow=not args.skip_tensorflow,
                 do_tflite=not args.skip_tflite, do_trt=not args.skip_trt, warm_up_trials=warm_up_trials, trials=trials,
                 repeat=repeat)
     if ret != 0:
-        logger.error('Failed infer with error %d', ret)
+        logger.error('%s Failed infer with error %d', log_prefix(), ret)
         return ret
 
     return 0

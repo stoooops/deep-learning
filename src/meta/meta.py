@@ -82,8 +82,7 @@ class MetaModel(AbstractTensorModel):
         if ret != 0:
             return ret, history
 
-        assert epochs - 1 <= self.metadata.epoch <= epochs  # safety check (delegate model may update this too)
-        self.metadata.epoch = epochs
+        self.metadata.update_epoch(epochs)
         return ret, history
 
     def evaluate(self, *argv, **kwargs):

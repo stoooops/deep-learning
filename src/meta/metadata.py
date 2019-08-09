@@ -22,6 +22,11 @@ class Metadata:
         self.input_names = input_names
         self.output_names = output_names
 
+    def update_epoch(self, epoch, prefix=None):
+        if self.epoch != epoch:
+            logger.debug('%s Updating epoch to %d', prefix or self.name, epoch)
+            self.epoch = epoch
+
     def dump(self, prefix=None):
         logger.debug('%s epoch = %s', prefix or self.name, self.epoch)
         logger.debug('%s inputs = %s', prefix or self.name, self.input_names)

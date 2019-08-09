@@ -42,6 +42,8 @@ OUTPUT_LEN = len(CIFAR_100_CLASSES)
 MODEL_NAMES = [NAME_BASIC, NAME_BATCHN, NAME_CONV, NAME_RESNET50]
 
 
+epoch = 0
+
 def get_filepath(model_name, epoch):
     filepath = os.path.join(MODELS_DIR, '%s_%03d.h5' % (model_name, epoch))
     return filepath
@@ -76,27 +78,48 @@ def evaluate(model, test_xy):
     print('[%.3fs] Test accuracy: %s' % (elapsed, test_acc))
 
 
+def line():
+    return '=' * 50
+
+
+def log_prefix(epoch):
+    return '[%s|%d]' % ('train', epoch)
+
+
+def log_bold(*argv, **kwargs):
+    global epoch
+    logger.info(log_prefix(epoch) + ' ' + line() + ' ' + argv[0] + ' ' + line(), *argv[1:], **kwargs)
+
+
 def train(model, train, test, epochs, initial_epoch=0, skip_pb=False, skip_tflite=False):
     """
     :type model: MetaModel
     """
     for prev_epoch in range(initial_epoch, epochs):
-        epoch = prev_epoch + 1
+        next_epoch = prev_epoch + 1
 
         # Fit
-        model.fit(*train, epochs=epoch, initial_epoch=prev_epoch)
+        log_bold('FIT')
+        model.fit(*train, epochs=next_epoch, initial_epoch=prev_epoch)
+        global epoch
+        epoch = next_epoch
 
         # Test
+        log_bold('EVALUATE')
         evaluate(model, test)
 
         # Save
+        recompile = False
         if not skip_pb and not skip_tflite:
+            log_bold('SAVE_ALL')
             ret = model.save_all(representative_data=train[0])
             if ret != 0:
                 logger.error('%s Failed saving all due to error %d', model.name, ret)
                 exit(1)
+            recompile = True
         else:
             # keras
+            log_bold('SAVE')
             ret = model.save()
             if ret != 0:
                 logger.error('%s Failed saving due to error %d', model.name, ret)
@@ -104,20 +127,25 @@ def train(model, train, test, epochs, initial_epoch=0, skip_pb=False, skip_tflit
 
             # pb
             if not skip_pb:
+                log_bold('SAVE TO %s', TensorApi.TENSORFLOW)
                 ret = model.save_to(TensorApi.TENSORFLOW)
                 if ret != 0:
                     logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TENSORFLOW, ret)
                     exit(1)
+                recompile = True
 
             # tflite
             if not skip_tflite:
+                log_bold('SAVE TO %s', TensorApi.TF_LITE)
                 ret = model.save_to(TensorApi.TF_LITE, representative_data=train[0])
                 if ret != 0:
                     logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TF_LITE, ret)
                     exit(1)
-                # Recompile after saving, which can corrupt state because the model gets recreated
-                logger.debug('%s Recompiling model...', model.name)
-                model_compile(model)
+
+        if recompile:
+            # Recompile after saving, which can corrupt state because the model gets recreated
+            log_bold('RECOMPILE')
+            model_compile(model)
 
 
 
@@ -137,16 +165,21 @@ def get_args():
 
 def main():
     # Args
+    log_bold('PARSE')
     args = get_args()
     model_name = args.model
     initial_epoch = args.initial_epoch
+    global epoch
+    epoch = initial_epoch
     epochs = args.epochs
     skip_tflite = args.skip_tflite
 
     # Data
+    log_bold('DATA')
     (train_images, train_labels), (test_images, test_labels) = get_data()
 
     # Model
+    log_bold('MODEL')
     ret, model = get_model(model_name, initial_epoch)
     if ret != 0:
         logger.error('Getting model failed with error %d', ret)
@@ -154,6 +187,7 @@ def main():
     model.dump()
 
     # Train
+    log_bold('TRAIN')
     train(model, (train_images, train_labels), (test_images, test_labels), epochs, initial_epoch=initial_epoch,
           skip_tflite=skip_tflite)
 

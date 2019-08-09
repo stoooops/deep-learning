@@ -60,7 +60,11 @@ class KerasModel(AbstractTensorModel):
 
         self.f_construct_keras_model = f_construct_keras_model
 
+        self.requires_recompile = False # flag in case we encounter case where we now need to recompile
+
     def compile(self, *argv, **kwargs):
+        if self.requires_recompile:
+            return ERROR_TF_META_REQUIRES_RECOMPILATION
         try:
             self.keras_model.compile(*argv, **kwargs)
         except ValueError as e:
@@ -103,7 +107,7 @@ class KerasModel(AbstractTensorModel):
         if ret != 0:
             return ret, None
 
-        self.metadata.epoch = epochs
+        self.metadata.update_epoch(epochs)
         return ret, history
 
     def evaluate(self, *argv, **kwargs):
