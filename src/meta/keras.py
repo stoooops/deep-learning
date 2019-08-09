@@ -11,8 +11,8 @@ from src.meta.errors import *
 from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.logger import HuliLogging
-
 from src.utils.file_utils import MODELS_DIR
+from src.utils import io_utils
 
 logger = HuliLogging.get_logger(__name__)
 
@@ -24,7 +24,6 @@ class KerasModel(AbstractTensorModel):
         :type name: str
         :type metadata: Metadata
         :type keras_model: keras.Model
-        :type epoch: int
         """
         super().__init__(name, metadata, mode=TensorApi.KERAS)
 
@@ -35,14 +34,16 @@ class KerasModel(AbstractTensorModel):
 
         input_names = [op.name for op in self.keras_model.inputs]
         if self.metadata.input_names is not None and input_names != self.metadata.input_names:
-            logger.warn('%s Overriding input names from %s to %s', self.log_prefix(), self.metadata.input_names, input_names)
+            logger.warn('%s Overriding input names from %s to %s', self.log_prefix(), self.metadata.input_names,
+                        input_names)
         else:
             logger.debug('%s Setting metadata input names to %s', self.log_prefix(), input_names)
         self.metadata.input_names = input_names
 
         output_names = [op.name for op in self.keras_model.outputs]
         if self.metadata.output_names is not None and output_names != self.metadata.output_names:
-            logger.warn('%s Overriding output names from %s to %s', self.log_prefix(), self.metadata.output_names, output_names)
+            logger.warn('%s Overriding output names from %s to %s', self.log_prefix(), self.metadata.output_names,
+                        output_names)
         else:
             logger.debug('%s Setting metadata out names to %s', self.log_prefix(), output_names)
         self.metadata.output_names = output_names
@@ -163,7 +164,7 @@ class KerasModel(AbstractTensorModel):
 
     def summary(self, *argv, **kwargs):
         # Set print function, if not already set
-        kwargs['print_fn'] = kwargs.get('print_fn', logger.info)
+        kwargs['print_fn'] = kwargs.get('print_fn', io_utils.prefix_print_fn(logger.debug, self.log_prefix()))
         ret = 0
         try:
             self.keras_model.summary(*argv, **kwargs)
@@ -173,7 +174,7 @@ class KerasModel(AbstractTensorModel):
         return ret
 
     def dump(self):
-        ret = self.summary(print_fn=logger.debug)
+        ret = self.summary(print_fn=io_utils.prefix_print_fn(logger.debug, self.log_prefix()))
         if ret != 0:
             return ret
 
@@ -202,7 +203,8 @@ class KerasModel(AbstractTensorModel):
             filepath_h5 = self.filepath_h5(self.metadata.epoch)
             ret, self.keras_model = KerasModel._load_keras_model(filepath_h5)
             if ret != 0:
-                logger.error('%s Failed re-loading keras model from %s due to error %d', self.log_prefix(), filepath_h5, ret)
+                logger.error('%s Failed re-loading keras model from %s due to error %d', self.log_prefix(), filepath_h5,
+                             ret)
                 return ret
         return 0
 
@@ -223,8 +225,8 @@ class KerasModel(AbstractTensorModel):
         filepath_weights_h5 = self.filepath_weights_h5(self.metadata.epoch)
         ret = self.save_weights(filepath_weights_h5)
         if ret != 0:
-            logger.error('%s Failed saving keras model weights to %s due to error %d', self.log_prefix(), filepath_weights_h5,
-                         ret)
+            logger.error('%s Failed saving keras model weights to %s due to error %d', self.log_prefix(),
+                         filepath_weights_h5, ret)
             return ret
 
         # Clear session
@@ -239,7 +241,8 @@ class KerasModel(AbstractTensorModel):
         # Reload model from disk
         ret = self._reload_keras_model()
         if ret != 0:
-            logger.error('%s Failed re-loading keras model from %s due to error %d', self.log_prefix(), filepath_h5, ret)
+            logger.error('%s Failed re-loading keras model from %s due to error %d', self.log_prefix(), filepath_h5,
+                         ret)
             return ret
 
         return 0

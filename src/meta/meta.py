@@ -137,7 +137,7 @@ class MetaModel(AbstractTensorModel):
 
     def summary(self, *args, **kwargs):
         if self.mode != TensorApi.KERAS:
-            logger.error('%s Summary not available in mode %s', self.log_prefix(), self.mode)
+            logger.error('%s summary() not available in mode %s', self.log_prefix(), self.mode)
             return ERROR_TF_META_WRONG_MODE
         return self.delegate.summary(*args, **kwargs)
 

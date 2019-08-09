@@ -6,6 +6,7 @@
 import ctypes
 
 from src.utils.logger import HuliLogging
+from src.utils import io_utils
 
 logger = HuliLogging.get_logger(__name__)
 
@@ -35,8 +36,8 @@ def gpu_info(print_prefix=None, print_fn=logger.debug, print_err_fn=logger.error
     _print_fn, _print_err_fn = print_fn, print_err_fn
     if print_prefix is not None:
         assert isinstance(print_prefix, str)
-        _print_fn = lambda *argv, **kwargs: print_fn(('%s ' + argv[0]) % print_prefix, *argv[1:], **kwargs)
-        _print_err_fn = lambda *argv, **kwargs: print_err_fn(('%s ' + argv[0]) % print_prefix, *argv[1:], **kwargs)
+        _print_fn = io_utils.prefix_print_fn(print_fn, print_prefix)
+        _print_err_fn = io_utils.prefix_print_fn(print_err_fn, print_prefix)
 
 
     libnames = ('libcuda.so', 'libcuda.dylib', 'cuda.dll')
