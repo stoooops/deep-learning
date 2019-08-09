@@ -4,7 +4,7 @@ import os
 import sys
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from src.utils.file_utils import TMP_DIR
+from src.utils.file_utils import LOG_DIR
 from functools import partial
 from src.utils.color_utils import bcolors
 
@@ -15,7 +15,7 @@ logging._levelToName[logging.WARNING] = 'WARN'
 logging._levelToName[logging.CRITICAL] = 'FATAL'
 
 
-FILENAME = os.path.normpath(os.path.join(TMP_DIR, 'huli.log'))
+FILENAME = os.path.normpath(os.path.join(LOG_DIR, 'huli.log'))
 
 
 class Logging:

@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from datetime import datetime
-from src.meta.constants import EXTENSION_H5, TENSORBOARD_DIR
+from src.meta.constants import EXTENSION_H5, TENSORBOARD_LOG_DIR
 from src.meta.errors import *
 from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
@@ -49,7 +49,7 @@ class KerasModel(AbstractTensorModel):
         self.metadata.output_names = output_names
 
         # tensorboard callback
-        tensor_board_log_dir = os.path.join(TENSORBOARD_DIR,
+        tensor_board_log_dir = os.path.join(TENSORBOARD_LOG_DIR,
                                             datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
         self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensor_board_log_dir)
 

@@ -13,3 +13,4 @@ MODELS_DIR = os.path.normpath(os.path.join(SRC_DIR, '../models'))
 
 TMP_DIR = os.path.normpath(os.path.join(SRC_DIR, '../tmp'))
 
+LOG_DIR = os.path.normpath(os.path.join(TMP_DIR, 'logs'))

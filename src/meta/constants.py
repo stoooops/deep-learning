@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-from src.utils.file_utils import TMP_DIR
+from src.utils.file_utils import LOG_DIR
 
 UNKNOWN_EPOCH = -1
 
@@ -11,4 +11,4 @@ EXTENSION_WEIGHTS_H5 = '_weights.h5'             # weights
 EXTENSION_PB = '.pb'
 EXTENSION_INT8_TFLITE = '_int8.tflite'
 
-TENSORBOARD_DIR = os.path.join(TMP_DIR, 'tensorboard')
+TENSORBOARD_LOG_DIR = os.path.join(LOG_DIR, 'tensorboard')
