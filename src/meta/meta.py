@@ -234,9 +234,9 @@ class MetaModel(AbstractTensorModel):
 
         return ret
 
-    def freeze_session(self):
+    def freeze_graph(self):
         if self.mode == TensorApi.KERAS:
-            return self.delegate.freeze_session()
+            return self.delegate.freeze_graph()
         else:
             return ERROR_TF_META_UNIMPLEMENTED
 
@@ -251,7 +251,7 @@ class MetaModel(AbstractTensorModel):
         if self.mode == TensorApi.KERAS:
             if mode == TensorApi.TENSORFLOW:
                 logger.debug('%s Converting to %s...', self.log_prefix(), EXTENSION_PB)
-                return MetaModelModeConverter(self).save_pb()
+                return self.freeze_graph()
 
             elif mode == TensorApi.TF_LITE:
                 logger.debug('%s Converting to %s...', self.log_prefix(), EXTENSION_INT8_TFLITE)
@@ -315,7 +315,6 @@ class MetaModelFactory:
             return ret, None
         return 0, model
 
-
     @staticmethod
     def from_tflite(name, epoch):
         metadata = Metadata(name, epoch=epoch)
@@ -331,9 +330,6 @@ class MetaModelModeConverter:
     def __init__(self, meta_model):
         assert isinstance(meta_model, MetaModel)
         self.meta_model = meta_model
-
-    def save_pb(self):
-        return self.meta_model.freeze_session()
 
     def save_tflite(self, representative_data, use_h5=True):
         assert self.meta_model.mode == TensorApi.KERAS, 'Must be in KERAS mode to save tflite'

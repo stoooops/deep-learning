@@ -35,11 +35,14 @@ Y_LENGTH = 100
 def f_basic():
     return factory.get_model_create_func(BASIC, X_SHAPE, Y_LENGTH)()
 
+
 def f_batchn():
     return factory.get_model_create_func(BATCHN, X_SHAPE, Y_LENGTH)()
 
+
 def f_conv():
     return factory.get_model_create_func(CONV, X_SHAPE, Y_LENGTH)()
+
 
 def f_resnet50():
     return factory.get_model_create_func(RESNET50, X_SHAPE, Y_LENGTH)()
@@ -58,6 +61,7 @@ _md = _km = None
 def setup():
     keras.backend.clear_session()
 
+
 def destroy():
     global _md, _km
     keras.backend.clear_session()
@@ -65,6 +69,7 @@ def destroy():
     del _km
     _km = None
     keras.backend.clear_session()
+
 
 @pytest.mark.parametrize("name,f_keras_model", PARAMS)
 def test_keras_end_to_end(name, f_keras_model):
@@ -136,7 +141,7 @@ def test_keras_end_to_end(name, f_keras_model):
     # freeze session
     filepath_pb = _km.filepath_pb(_md.epoch, dir=DIR)
     assert not os.path.exists(filepath_pb)
-    ret = _km.freeze_session(dir=DIR)
+    ret = _km.freeze_graph(dir=DIR)
     assert ret == 0, '%s freeze_session failed due to error %d' % (name, ret)
     assert os.path.exists(filepath_pb)
     assert _md == _km.metadata

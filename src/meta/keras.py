@@ -248,7 +248,7 @@ class KerasModel(AbstractTensorModel):
 
         return 0
 
-    def freeze_session(self, dir=None, keep_var_names=None, output_names=None, clear_devices=True):
+    def freeze_graph(self, dir=None, keep_var_names=None, output_names=None, clear_devices=True):
         """
         Freezes the state of a session into a pruned computation graph.
 
@@ -256,6 +256,7 @@ class KerasModel(AbstractTensorModel):
         constants taking their current value in the session. The new graph will be
         pruned so subgraphs that are not necessary to compute the requested
         outputs are removed.
+        @param dir Override directory to freeze graph to
         @param keep_var_names A list of variable names that should not be frozen,
                               or None to freeze all the variables in the graph.
         @param output_names Names of the relevant graph outputs.
