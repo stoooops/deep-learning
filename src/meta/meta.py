@@ -223,7 +223,6 @@ class MetaModel(AbstractTensorModel):
 
         if self.mode == TensorApi.KERAS:
             if mode == TensorApi.TENSOR_FLOW:
-                return 0
                 return MetaModelModeConverter(self).save_pb()
             elif mode == TensorApi.TF_LITE:
                 return MetaModelModeConverter(self).save_tflite(representative_data)

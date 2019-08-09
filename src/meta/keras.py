@@ -172,6 +172,35 @@ class KerasModel(AbstractTensorModel):
 
         return 0
 
+    def restart_session(self, learning_phase=None):
+        """
+        Restart underlying tf.session, storing model to disk and back
+        """
+        # Save model to disk
+        logger.debug('%s Saving h5 file so we can restart and reload session...', self.name)
+        filepath_h5 = self.filepath_h5(self.epoch)
+        ret = self.save(filepath_h5)
+        if ret != 0:
+            logger.error('%s Failed saving keras model to %s due to error %d', self.name, filepath_h5, ret)
+            return ret
+
+        # Clear session
+        logger.warn('%s Bug Workaround: Clearing session...', self.name)
+        keras.backend.clear_session()
+
+        # This must be set before we reload the model
+        if learning_phase is not None:
+            logger.warn('%s Bug Workaround: Setting learning phase to %d...', self.name, learning_phase)
+            keras.backend.set_learning_phase(learning_phase)
+
+        # Reload model from disk
+        ret, self.keras_model = KerasModel._load_keras_model(filepath_h5)
+        if ret != 0:
+            logger.error('%s Failed re-loading keras model from %s due to error %d', self.name, filepath_h5, ret)
+            return ret
+
+        return 0
+
     def freeze_session(self, keep_var_names=None, output_names=None, clear_devices=True):
         """
         Freezes the state of a session into a pruned computation graph.
@@ -186,14 +215,24 @@ class KerasModel(AbstractTensorModel):
         @param clear_devices Remove the device directives from the graph for better portability.
         @return The frozen graph definition.
         """
+        # Bug workaround. Refer https://github.com/tensorflow/tensorflow/issues/31331#issuecomment-518655879
+        # We should be able to remove this at some point
+        logger.info('%s Bug Workaround: Restarting session...', self.name)
+        ret = self.restart_session(learning_phase=0)
+        if ret != 0:
+            return ret
+        # Now do freeze
+
         # Refer https://stackoverflow.com/a/45466355/2079993
         session = keras.backend.get_session()
         graph = session.graph
         with graph.as_default():
             freeze_var_names = list(set(v.op.name for v in tf.global_variables()).difference(keep_var_names or []))
+            logger.debug('%s Frozen graph has var names: %s', self.name, freeze_var_names)
             # tweaked here
             output_names = output_names or [out.op.name for out in self.keras_model.outputs]
             output_names += [v.op.name for v in tf.global_variables()]
+            logger.debug('%s Frozen graph has output names: %s', self.name, output_names)
             # Graph -> GraphDef ProtoBuf
             input_graph_def = graph.as_graph_def()
             if clear_devices:
@@ -207,18 +246,25 @@ class KerasModel(AbstractTensorModel):
                 logger.exception(e)
                 return ERROR_TF_META_CAUGHT_EXCEPTION
 
-            logger.info('%s Saving frozen graph to %s...', self.name, self.filepath_pb(self.epoch))
+            logger.debug('%s Saving frozen graph to %s...', self.name, self.filepath_pb(self.epoch))
             try:
-                tf.train.write_graph(frozen_graph, self.file_dir(), self.filename_pb(self.epoch), as_text=False)
+                tf.train.write_graph(frozen_graph, self.file_dir(self.epoch), self.filename_pb(self.epoch),
+                                     as_text=False)
             except Exception as e:
                 logger.exception(e)
                 return ERROR_TF_META_CAUGHT_EXCEPTION
 
+        # Bug workaround. Refer https://github.com/tensorflow/tensorflow/issues/31331#issuecomment-518655879
+        # We should be able to remove this at some point
+        logger.info('%s Bug Workaround: Restarting session...', self.name)
+        ret = self.restart_session()
+        if ret != 0:
+            return ret
+
         return 0
 
     @staticmethod
-    def load(name, epoch, filepath):
-        logger.debug('%s Loading keras model from %s...', name, filepath)
+    def _load_keras_model(filepath):
         try:
             keras_model = keras.models.load_model(filepath)
         except IOError as e:
@@ -227,6 +273,16 @@ class KerasModel(AbstractTensorModel):
         except Exception as e:
             logger.exception(e)
             return ERROR_TF_META_CAUGHT_EXCEPTION, None
+
+        return 0, keras_model
+
+    @staticmethod
+    def load(name, epoch, filepath):
+        logger.debug('%s Loading keras model from %s...', name, filepath)
+
+        ret, keras_model = KerasModel._load_keras_model(filepath)
+        if ret != 0:
+            return ret, None
 
         result = KerasModel(name, keras_model, epoch=epoch)
 
