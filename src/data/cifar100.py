@@ -25,6 +25,8 @@ CIFAR_100_CLASSES = np.array([
     'worm'
 ])
 
+CIFAR_100_INPUT_SHAPE = (32, 32, 3)
+
 
 def load_cifar100_data(normalize=True):
     (train_images, train_labels), (test_images, test_labels) = CIFAR_100.load_data()

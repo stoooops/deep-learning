@@ -18,7 +18,7 @@ import time
 import argparse
 from src.utils.logger import HuliLogging
 
-from src.data.cifar100 import CIFAR_100_CLASSES, load_cifar100_data
+from src.data.cifar100 import CIFAR_100_CLASSES, CIFAR_100_INPUT_SHAPE, load_cifar100_data
 from src.meta.meta import MetaModel, MetaModelFactory
 from src.meta.tensor_apis import TensorApi
 from src.models.basic import NAME as NAME_BASIC
@@ -36,7 +36,7 @@ print(tf.__name__, '-', tf.__version__, sep='')
 print('=' * 50)
 
 
-INPUT_SHAPE = (32, 32, 3)
+INPUT_SHAPE = CIFAR_100_INPUT_SHAPE
 OUTPUT_LEN = len(CIFAR_100_CLASSES)
 
 MODEL_NAMES = [NAME_BASIC, NAME_BATCHN, NAME_CONV, NAME_RESNET50]
