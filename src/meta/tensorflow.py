@@ -15,7 +15,7 @@ logger = HuliLogging.get_logger(__name__)
 
 class TensorFlowModel(AbstractTensorModel):
 
-    def __init__(self, name, graph_def, graph, epoch=UNKNOWN_EPOCH):
+    def __init__(self, name, input_names, output_names, graph_def, graph, epoch=UNKNOWN_EPOCH):
         """
         :type name: str
         :type graph_def: tensorflow.GraphDef
@@ -36,7 +36,14 @@ class TensorFlowModel(AbstractTensorModel):
             'Expected tf.Graph but got: %s' % graph
         self.graph = graph
 
-        self.mode = TensorApi.TENSOR_FLOW
+        self.input_names = [self.name + '/' + input_name for input_name in input_names]
+        self.graph_x = [self.graph.get_tensor_by_name(name) for name in self.input_names]
+        assert len(self.graph_x) == 1, 'MULTIPLE INPUTS NOT SUPPORTED YET.'
+        self.graph_x = self.graph_x[0]
+        self.output_names = [self.name + '/' + output_name for output_name in output_names]
+        self.graph_y = [self.graph.get_tensor_by_name(name) for name in self.output_names]
+
+        self.mode = TensorApi.TENSORFLOW
 
     def compile(self):
         return ERROR_TF_META_UNIMPLEMENTED
@@ -47,8 +54,29 @@ class TensorFlowModel(AbstractTensorModel):
     def evaluate(self):
         return ERROR_TF_META_UNIMPLEMENTED
 
-    def predict(self):
-        return ERROR_TF_META_UNIMPLEMENTED
+    def predict(self, *argv, **kwargs):
+        assert len(argv) == 1
+        x = argv[0]
+        ret, y = 0, None
+        try:
+            with self.graph.as_default():
+                # Dimensions to the model are batch, height, width, colors. sample image needs to have batch
+                # axes prepended to the shape so we expand dims.
+                y = tf.Session().run(self.graph_y, feed_dict={self.graph_x: x})
+        except RuntimeError as e:
+            logger.exception('%s session is in invalid state (e.g. has been closed).', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        except TypeError as e:
+            logger.exception('Given `fetches` or `feed_dict` keys are of an inappropriate type.', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        except ValueError as e:
+            logger.exception(
+                'Given `fetches` or `feed_dict` keys are invalid or refer to a `Tensor` that doesn\'t exist.', e)
+            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+        if ret != 0:
+            return ret, None
+
+        return ret, y
 
     def save(self):
         return ERROR_TF_META_UNIMPLEMENTED
@@ -62,9 +90,8 @@ class TensorFlowModel(AbstractTensorModel):
 
         return 0
 
-
     @staticmethod
-    def load(name, epoch, filepath):
+    def load(name, epoch, filepath, input_names, output_names):
         logger.debug('%s Loading frozen graph model from %s...', name, filepath)
 
         tf.reset_default_graph()
@@ -87,6 +114,6 @@ class TensorFlowModel(AbstractTensorModel):
         logger.debug('%s pb model imported into tensorboard. Visualize by running: ', name)
         logger.debug('> tensorboard --logdir=%s', tensorboard_log_dir)
 
-        result = TensorFlowModel(name, graph_def, sess.graph, epoch=epoch)
+        result = TensorFlowModel(name, input_names, output_names, graph_def, sess.graph, epoch=epoch)
 
         return 0, result

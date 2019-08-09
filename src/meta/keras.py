@@ -32,6 +32,8 @@ class KerasModel(AbstractTensorModel):
         # keras Model
         assert keras_model is not None and isinstance(keras_model, keras.Model)
         self.keras_model = keras_model
+        self.input_names = [op.name for op in self.keras_model.inputs]
+        self.output_names = [op.name for op in self.keras_model.outputs]
 
         # tensorboard callback
         tensor_board_log_dir = os.path.join(TENSORBOARD_DIR,

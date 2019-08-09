@@ -17,7 +17,7 @@ from src.utils.logger import HuliLogging
 
 logger = HuliLogging.get_logger(__name__)
 
-SUPPORTED_MODES = [TensorApi.NONE, TensorApi.KERAS, TensorApi.TENSOR_FLOW, TensorApi.TF_LITE]
+SUPPORTED_MODES = [TensorApi.NONE, TensorApi.KERAS, TensorApi.TENSORFLOW, TensorApi.TF_LITE]
 
 
 class MetaModel(AbstractTensorModel):
@@ -31,6 +31,8 @@ class MetaModel(AbstractTensorModel):
 
         assert delegate is None or isinstance(delegate, AbstractTensorModel)
         self.delegate = None
+        self.input_names = None
+        self.output_names = None
         if delegate is not None:
             self.attach_delegate(delegate)
 
@@ -43,7 +45,9 @@ class MetaModel(AbstractTensorModel):
 
         if delegate.mode == TensorApi.KERAS:
             assert isinstance(delegate, KerasModel)
-        elif delegate.mode == TensorApi.TENSOR_FLOW:
+            self.input_names = delegate.input_names
+            self.output_names = delegate.output_names
+        elif delegate.mode == TensorApi.TENSORFLOW:
             assert isinstance(delegate, TensorFlowModel)
         elif delegate.mode == TensorApi.TF_LITE:
             assert isinstance(delegate, TfLiteModel)
@@ -122,6 +126,8 @@ class MetaModel(AbstractTensorModel):
 
         logger.debug('%s mode = %s', self.name, self.mode)
         logger.debug('%s epoch = %s', self.name, self.epoch)
+        logger.debug('%s inputs = %s', self.name, self.input_names)
+        logger.debug('%s outputs = %s', self.name, self.output_names)
 
         ret = 0
         if self.mode != TensorApi.NONE:
@@ -174,7 +180,9 @@ class MetaModel(AbstractTensorModel):
         return 0
 
     def init_pb(self):
-        ret, tf_model = TensorFlowModel.load(self.name, self.epoch, self.filepath_pb(self.epoch))
+        assert self.input_names is not None and self.output_names is not None
+        ret, tf_model = TensorFlowModel.load(self.name, self.epoch, self.filepath_pb(self.epoch), self.input_names,
+                                             self.output_names)
         if ret != 0:
             return ret
 
@@ -197,7 +205,7 @@ class MetaModel(AbstractTensorModel):
 
         if mode == TensorApi.KERAS:
             ret = self.init_keras()
-        elif mode == TensorApi.TENSOR_FLOW:
+        elif mode == TensorApi.TENSORFLOW:
             ret = self.init_pb()
         elif mode == TensorApi.TF_LITE:
             ret = self.init_tflite()
@@ -221,7 +229,7 @@ class MetaModel(AbstractTensorModel):
         logger.debug('%s Saving mode %s via mode %s...', self.name, mode, self.mode)
 
         if self.mode == TensorApi.KERAS:
-            if mode == TensorApi.TENSOR_FLOW:
+            if mode == TensorApi.TENSORFLOW:
                 return MetaModelModeConverter(self).save_pb()
             elif mode == TensorApi.TF_LITE:
                 return MetaModelModeConverter(self).save_tflite(representative_data)
@@ -236,7 +244,7 @@ class MetaModel(AbstractTensorModel):
                 continue
             if mode == self.mode:
                 ret = self.save()
-            elif mode == TensorApi.TENSOR_FLOW:
+            elif mode == TensorApi.TENSORFLOW:
                 ret = self.save_to(mode)
             elif mode == TensorApi.TF_LITE:
                 ret = self.save_to(mode, representative_data=representative_data)

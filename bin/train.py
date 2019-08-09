@@ -128,9 +128,9 @@ def train(model, train, test, epochs, initial_epoch=0, skip_pb=False, skip_tflit
 
             # pb
             if not skip_pb:
-                ret = model.save_to(TensorApi.TENSOR_FLOW)
+                ret = model.save_to(TensorApi.TENSORFLOW)
                 if ret != 0:
-                    logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TENSOR_FLOW, ret)
+                    logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TENSORFLOW, ret)
                     exit(1)
 
             # tflite

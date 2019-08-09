@@ -11,7 +11,7 @@ from src.utils.file_utils import MODELS_DIR
 
 class TensorApi(UniqueEnum):
     NONE = 'none'
-    TENSOR_FLOW = 'tensorflow'
+    TENSORFLOW = 'tensorflow'
     KERAS = 'keras'
     TF_LITE = 'tf.lite'
     TENSOR_RT = 'trt'
