@@ -16,7 +16,14 @@ import os
 import sys
 import time
 import argparse
+from src.utils.color_utils import bcolors
 from src.utils.logger import HuliLogging
+HuliLogging.attach_stdout()
+HuliLogging.debug_dim()
+HuliLogging.info_blue()
+HuliLogging.warn_yellow()
+HuliLogging.error_red()
+
 
 from src.data.cifar100 import CIFAR_100_CLASSES, CIFAR_100_INPUT_SHAPE, load_cifar100_data
 from src.meta.meta import MetaModel, MetaModelFactory
@@ -29,7 +36,6 @@ from src.models import factory
 from src.utils.file_utils import MODELS_DIR
 
 logger = HuliLogging.get_logger(__name__)
-HuliLogging.attach_stdout()
 
 print('=' * 50)
 print(tf.__name__, '-', tf.__version__, sep='')
@@ -196,14 +202,21 @@ if __name__ == '__main__':
     now = time.time()
     logger.info('')
     logger.info('')
-    logger.info('> ' + ' '.join(sys.argv))
+    bcolors.light_cyan(logger.info, '> ' + ' '.join(sys.argv))
+
+    ret = 0
     try:
         main()
     except Exception as e:
-        logger.exception(e)
-        exit(1)
+        logger.exception('Uncaught exception: %s', e)
+        ret = 1
+    logger.info('')
+    bcolors.light_cyan(logger.info, '> ' + ' '.join(sys.argv))
+    logger.info('')
 
-    logger.info('')
-    logger.info('> ' + ' '.join(sys.argv))
-    logger.info('')
-    logger.info('[%.3fs] SUCCESS!!!', time.time() - now)
+    if ret == 0:
+        bcolors.light_green(logger.info, '[%.3fs] SUCCESS!!!',time.time() - now)
+    else:
+        bcolors.light_red(logger.error, '[%.3fs] FAIL!!!', time.time() - now)
+
+    exit(ret)

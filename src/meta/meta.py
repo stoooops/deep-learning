@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from src.meta.constants import UNKNOWN_EPOCH
+from src.meta.constants import EXTENSION_PB, EXTENSION_INT8_TFLITE, UNKNOWN_EPOCH
 from src.meta.errors import *
 from src.meta.keras import KerasModel
 from src.meta.metadata import Metadata
@@ -250,9 +250,13 @@ class MetaModel(AbstractTensorModel):
 
         if self.mode == TensorApi.KERAS:
             if mode == TensorApi.TENSORFLOW:
+                logger.debug('%s Converting to %s...', self.log_prefix(), EXTENSION_PB)
                 return MetaModelModeConverter(self).save_pb()
+
             elif mode == TensorApi.TF_LITE:
+                logger.debug('%s Converting to %s...', self.log_prefix(), EXTENSION_INT8_TFLITE)
                 return MetaModelModeConverter(self).save_tflite(representative_data)
+
             else:
                 assert 1 == 0, 'Unexpected mode: %s' % mode
 
@@ -262,14 +266,22 @@ class MetaModel(AbstractTensorModel):
         for mode in save_order:
             if mode == TensorApi.NONE:
                 continue
+
             if mode == self.mode:
+                logger.debug('%s Saving...', self.log_prefix())
                 ret = self.save()
+
             elif mode == TensorApi.TENSORFLOW:
+                logger.debug('%s Saving to %s...', self.log_prefix(), mode)
                 ret = self.save_to(mode)
+
             elif mode == TensorApi.TF_LITE:
+                logger.debug('%s Saving to %s...', self.log_prefix(), mode)
                 ret = self.save_to(mode, representative_data=representative_data)
+
             else:
                 ret = ERROR_TF_META_WRONG_MODE
+
             if ret != 0:
                 return ret
         return 0
@@ -323,12 +335,30 @@ class MetaModelModeConverter:
     def save_pb(self):
         return self.meta_model.freeze_session()
 
-    def save_tflite(self, representative_data):
+    def save_tflite(self, representative_data, use_h5=True):
         assert self.meta_model.mode == TensorApi.KERAS, 'Must be in KERAS mode to save tflite'
-        # if we use from_keras_model_file() then it clears the session
-        converter = tf.lite.TFLiteConverter.from_session(keras.backend.get_session(),
-                                                         self.meta_model.delegate.keras_model.inputs,
-                                                         self.meta_model.delegate.keras_model.outputs)
+
+        if use_h5:
+            log_prefix = '%s %s' % (self.meta_model.log_prefix(), ' [BatchN workaround]')
+            # seems to be required or we get errors with BatchNormalization
+            h5_filepath = self.meta_model.filepath_h5(self.meta_model.metadata.epoch)
+            logger.warn('%s Creating TFLiteConverter from %s...', log_prefix, h5_filepath)
+            if not os.path.exists(h5_filepath):
+                logger.error('File not found: %s', h5_filepath)
+                return ERROR_TF_META_FILE_NOT_FOUND
+
+            converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file(h5_filepath)
+            # above call clears the keras session, so we need to reload our model
+            if self.meta_model.mode == TensorApi.KERAS:
+                logger.info('%s Reloading...', log_prefix)
+                self.meta_model.reload()
+        else:
+            # This works for non-BatchNormalization
+            # prefer this since if we use from_keras_model_file() then it clears the session
+            logger.debug('%s Creating TFLiteConverter from existing keras session...', self.meta_model.log_prefix())
+            converter = tf.lite.TFLiteConverter.from_session(keras.backend.get_session(),
+                                                             self.meta_model.delegate.keras_model.inputs,
+                                                             self.meta_model.delegate.keras_model.outputs)
 
         def representative_dataset_gen():
             for i in range(1000):
@@ -346,10 +376,10 @@ class MetaModelModeConverter:
         converter.inference_output_type = tf.uint8
         converter.optimizations = [tf.lite.Optimize.DEFAULT]  # seems that result file has same size no matter what
 
-        logger.info('%s Converting to tflite INT8 model...', self.meta_model.log_prefix())
+        logger.debug('%s Converting to tflite INT8 model...', self.meta_model.log_prefix())
         tflite_model = converter.convert()
         tflite_filepath = self.meta_model.filepath_tflite(self.meta_model.metadata.epoch)
-        logger.info('%s Saving tflite model to %s...', self.meta_model.log_prefix(), tflite_filepath)
+        logger.debug('%s Saving tflite model to %s...', self.meta_model.log_prefix(), tflite_filepath)
         with open(tflite_filepath, 'wb') as o_:
             o_.write(tflite_model)
 

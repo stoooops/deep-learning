@@ -290,7 +290,7 @@ class KerasModel(AbstractTensorModel):
                 frozen_graph = tf.compat.v1.graph_util.convert_variables_to_constants(session, input_graph_def,
                                                                                       output_names, freeze_var_names)
             except Exception as e:
-                logger.exception(e)
+                logger.exception('Caught exception while converting variables to constants: %s', e)
                 return ERROR_TF_META_CAUGHT_EXCEPTION
 
             logger.debug('%s Saving frozen graph to %s...', self.log_prefix(), self.filepath_pb(self.metadata.epoch))
@@ -298,7 +298,7 @@ class KerasModel(AbstractTensorModel):
                 tf.io.write_graph(frozen_graph, self.file_dir(self.metadata.epoch),
                                   self.filename_pb(self.metadata.epoch), as_text=False)
             except Exception as e:
-                logger.exception(e)
+                logger.exception('Caught exception while saving frozen graph: %s', e)
                 return ERROR_TF_META_CAUGHT_EXCEPTION
 
         # Bug workaround. Refer https://github.com/tensorflow/tensorflow/issues/31331#issuecomment-518655879

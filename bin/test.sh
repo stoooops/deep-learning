@@ -1,16 +1,16 @@
 #!/bin/bash
 
-if [ $# -eq 0 ]
-  then
-    echo "No arguments supplied"
-fi
+set -e
+set -o pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-EPOCHS=2
+MODELS="${1:-basic}"
+EPOCHS="${2:-2}"
 
-IFS=',' read -ra ADDR <<< "$1"
+IFS=',' read -ra ADDR <<< "$MODELS"
 for i in "${ADDR[@]}"; do
+    cmd=
     "${SCRIPT_DIR}"/train.sh -m $i -i 0 -e "${EPOCHS}"
 
     echo

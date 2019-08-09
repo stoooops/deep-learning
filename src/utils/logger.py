@@ -5,6 +5,8 @@ import sys
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from src.utils.file_utils import TMP_DIR
+from functools import partial
+from src.utils.color_utils import bcolors
 
 # use WARN instead of WARNING and FATAL instead of CRITICAL
 # This way our formatters can pad width at 5 characters instead of 8,
@@ -46,7 +48,7 @@ class HuliLogging:
     # always use LOGFILE_HANDLER
     _HANDLERS.append(_LOGFILE_HANDLER)
 
-    _std_out_attached = False
+    _std_out_attached = _debug_dim = _info_blue = _warn_yellow = _error_red = False
 
     @staticmethod
     def get_logger(name):
@@ -69,6 +71,18 @@ class HuliLogging:
         # Don't let tensorflow duplicate this logger
         logger.propagate = False
 
+        if HuliLogging._debug_dim:
+            HuliLogging.debug_dim(logger=logger)
+
+        if HuliLogging._info_blue:
+            HuliLogging.info_blue(logger=logger)
+
+        if HuliLogging._warn_yellow:
+            HuliLogging.warn_yellow(logger=logger)
+
+        if HuliLogging._error_red:
+            HuliLogging.error_red(logger=logger)
+
         return logger
 
     @staticmethod
@@ -79,6 +93,64 @@ class HuliLogging:
             HuliLogging.attach_handler(stdout_handler)
 
         HuliLogging._std_out_attached = True
+
+    @staticmethod
+    def debug_dim(logger=None):
+        if logger is not None:
+            logger.debug = partial(bcolors.dim, logger.info)
+            return
+
+        # else apply to all if we haven't already
+        if not HuliLogging._debug_dim:
+            # update existing loggers
+            for name, logger in HuliLogging._LOGGERS.items():
+                HuliLogging.debug_dim(logger=logger)
+
+        HuliLogging._debug_dim = True
+
+    @staticmethod
+    def info_blue(logger=None):
+        if logger is not None:
+            logger.info = partial(bcolors.light_blue, logger.info)
+            return
+
+        # else apply to all if we haven't already
+        if not HuliLogging._info_blue:
+            # update existing loggers
+            for name, logger in HuliLogging._LOGGERS.items():
+                HuliLogging.info_blue(logger=logger)
+
+        HuliLogging._info_blue = True
+
+    @staticmethod
+    def warn_yellow(logger=None):
+        if logger is not None:
+            logger.warn = partial(bcolors.light_yellow, logger.warn)
+            logger.warning = partial(bcolors.light_yellow, logger.warning)
+            return
+
+        # else apply to all if we haven't already
+        if not HuliLogging._warn_yellow:
+            # update existing loggers
+            for name, logger in HuliLogging._LOGGERS.items():
+                HuliLogging.warn_yellow(logger=logger)
+
+        HuliLogging._warn_yellow = True
+
+    @staticmethod
+    def error_red(logger=None):
+        if logger is not None:
+            logger.error = partial(bcolors.light_red, logger.error)
+            logger.exception = partial(bcolors.light_red, logger.exception)
+            return
+
+        # else apply to all if we haven't already
+        if not HuliLogging._error_red:
+            # update existing loggers
+            for name, logger in HuliLogging._LOGGERS.items():
+                HuliLogging.error_red(logger=logger)
+
+        HuliLogging._error_red = True
 
     @staticmethod
     def attach_handler(handler):

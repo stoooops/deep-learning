@@ -12,14 +12,20 @@ import sys
 import time
 import argparse
 
-from src.meta.tensor_apis import TensorApi
 from src.utils.logger import HuliLogging
+HuliLogging.attach_stdout()
+HuliLogging.debug_dim()
+HuliLogging.info_blue()
+HuliLogging.warn_yellow()
+HuliLogging.error_red()
+logger = HuliLogging.get_logger(__name__)
+
+
+from src.meta.tensor_apis import TensorApi
 from bin.train import get_data, get_model, MODEL_NAMES
 
 import tensorflow as tf
 
-logger = HuliLogging.get_logger(__name__)
-HuliLogging.attach_stdout()
 
 
 logger.info('=' * 50)
@@ -222,21 +228,20 @@ if __name__ == '__main__':
     logger.info('')
     logger.info('')
     logger.info('> ' + ' '.join(sys.argv))
+
     ret = 0
     try:
-        ret = main()
+        main()
     except Exception as e:
-        logger.exception(e)
-        exit(1)
-    if ret != 0:
-        logger.info('')
-        logger.info('> ' + ' '.join(sys.argv))
-        logger.info('')
-        logger.info('[%.3fs] FAILED!!!', time.time() - now)
-        exit(ret)
-
+        logger.exception('Uncaught exception: %s', e)
+        ret = 1
     logger.info('')
     logger.info('> ' + ' '.join(sys.argv))
     logger.info('')
-    logger.info('[%.3fs] SUCCESS!!!', time.time() - now)
+
+    if ret == 0:
+        logger.info('[%.3fs] SUCCESS!!!', time.time() - now)
+    else:
+        logger.error('[%.3fs] FAIL!!!', time.time() - now)
+
     exit(ret)
