@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from src.meta.constants import EXTENSION_PB, EXTENSION_INT8_TFLITE, UNKNOWN_EPOCH
+from src.meta.constants import UNKNOWN_EPOCH
 from src.meta.errors import *
 from src.meta.keras import KerasModel
 from src.meta.metadata import Metadata
@@ -14,6 +14,7 @@ from src.meta.tensorflow import TensorFlowModel
 from src.meta.tflite import TfLiteModel
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.cuda_utils import gpu_info
+from src.utils.file_utils import EXTENSION_PB, EXTENSION_INT8_TFLITE
 from src.utils.logger import Logging
 
 
@@ -94,7 +95,7 @@ class MetaModel(AbstractTensorModel):
     def save(self, **kwargs):
         assert self.mode == TensorApi.KERAS  # TODO improve state logic
 
-        filepath = self.filepath_h5(self.metadata.epoch) if self.mode == TensorApi.KERAS else None
+        filepath = self.filepath_h5() if self.mode == TensorApi.KERAS else None
         logger.debug('%s Saving keras model to %s...', self.log_prefix(), filepath)
         ret = self.delegate.save(filepath, **kwargs)
         if ret != 0:
@@ -102,7 +103,7 @@ class MetaModel(AbstractTensorModel):
 
         if self.mode == TensorApi.KERAS:
             # save weights
-            filepath_weights = self.filepath_weights_h5(self.metadata.epoch)
+            filepath_weights = self.filepath_weights_h5()
             logger.debug('%s Saving keras model weights to %s...', self.log_prefix(), filepath_weights)
             ret = self.delegate.save_weights(filepath_weights, **kwargs)
             if ret != 0:
@@ -110,7 +111,7 @@ class MetaModel(AbstractTensorModel):
 
             # unless explicitly passed in as include_optimizer=True, then also store without the optimizer info
             if not kwargs.get('include_optimizer', False):
-                filepath_no_opt = self.filepath_no_opt_h5(self.metadata.epoch)
+                filepath_no_opt = self.filepath_no_opt_h5()
                 logger.debug('%s Saving keras model without optimizer to %s...', self.log_prefix(), filepath_no_opt)
                 kwargs['include_optimizer'] = True
                 ret = self.delegate.save(filepath_no_opt, **kwargs)
@@ -167,7 +168,7 @@ class MetaModel(AbstractTensorModel):
 
         if f_construct_keras_model is None:
             # No constructor passed, loading from h5
-            filepath_h5 = self.filepath_h5(self.metadata.epoch)
+            filepath_h5 = self.filepath_h5()
             logger.debug('%s Initializing keras from %s...', self.log_prefix(), filepath_h5)
             ret, keras_model = KerasModel.load(self.name, self.metadata, filepath_h5)
             if ret != 0:
@@ -179,7 +180,7 @@ class MetaModel(AbstractTensorModel):
 
             if self.metadata.epoch > 0:
                 # weights
-                filepath_weights_h5 = self.filepath_weights_h5(self.metadata.epoch)
+                filepath_weights_h5 = self.filepath_weights_h5()
                 logger.debug('%s Loading keras model weights from %s...', self.log_prefix(), filepath_weights_h5)
                 keras_model.load_weights(filepath_weights_h5)
             else:
@@ -193,7 +194,7 @@ class MetaModel(AbstractTensorModel):
         return 0
 
     def init_tflite(self):
-        ret, tflite_model = TfLiteModel.load(self.name, self.metadata, self.filepath_tflite(self.metadata.epoch))
+        ret, tflite_model = TfLiteModel.load(self.name, self.metadata, self.filepath_tflite())
         if ret != 0:
             return ret
 
@@ -202,7 +203,7 @@ class MetaModel(AbstractTensorModel):
 
     def init_pb(self):
         assert self.metadata.input_names is not None and self.metadata.output_names is not None
-        ret, tf_model = TensorFlowModel.load(self.name, self.metadata, self.filepath_pb(self.metadata.epoch))
+        ret, tf_model = TensorFlowModel.load(self.name, self.metadata, self.filepath_pb())
         if ret != 0:
             return ret
 
@@ -337,7 +338,7 @@ class MetaModelModeConverter:
         if use_h5:
             log_prefix = '%s %s' % (self.meta_model.log_prefix(), ' [BatchN workaround]')
             # seems to be required or we get errors with BatchNormalization
-            h5_filepath = self.meta_model.filepath_h5(self.meta_model.metadata.epoch)
+            h5_filepath = self.meta_model.filepath_h5()
             logger.warn('%s Creating TFLiteConverter from %s...', log_prefix, h5_filepath)
             if not os.path.exists(h5_filepath):
                 logger.error('File not found: %s', h5_filepath)
@@ -379,7 +380,7 @@ class MetaModelModeConverter:
             logger.exception('%s Caught exception while converting model to tflite INT8: %s',
                              self.meta_model.log_prefix(), e)
             return ERROR_TF_META_CAUGHT_EXCEPTION
-        tflite_filepath = self.meta_model.filepath_tflite(self.meta_model.metadata.epoch)
+        tflite_filepath = self.meta_model.filepath_tflite()
         logger.debug('%s Saving tflite model to %s...', self.meta_model.log_prefix(), tflite_filepath)
         with open(tflite_filepath, 'wb') as o_:
             o_.write(tflite_model)

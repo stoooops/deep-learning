@@ -71,6 +71,10 @@ def destroy():
     keras.backend.clear_session()
 
 
+def assert_exists(filepath):
+    assert os.path.exists(filepath), '%s does not exist' % filepath
+
+
 @pytest.mark.parametrize("name,f_keras_model", PARAMS)
 def test_keras_end_to_end(name, f_keras_model):
     setup()
@@ -97,18 +101,18 @@ def test_keras_end_to_end(name, f_keras_model):
     assert ret == 0, '%s predict failed due to error %d' % (name, ret)
 
     # save
-    filepath_h5 = _km.filepath_h5(_md.epoch, dir=DIR)
+    filepath_h5 = _km.filepath_h5(dir_=DIR)
     assert not os.path.exists(filepath_h5)
     ret = _km.save(filepath_h5)
     assert ret == 0, '%s save failed due to error %d' % (name, ret)
-    assert os.path.exists(filepath_h5)
+    assert_exists(filepath_h5)
 
     # save weights
-    filepath_weights_h5 = _km.filepath_weights_h5(_md.epoch, dir=DIR)
+    filepath_weights_h5 = _km.filepath_weights_h5(dir_=DIR)
     assert not os.path.exists(filepath_weights_h5)
     ret = _km.save(filepath_weights_h5)
     assert ret == 0, '%s save failed due to error %d' % (name, ret)
-    assert os.path.exists(filepath_weights_h5)
+    assert_exists(filepath_weights_h5)
     assert os.path.getsize(filepath_h5) >= os.path.getsize(filepath_weights_h5)
 
     # reload from function and weights
@@ -139,11 +143,11 @@ def test_keras_end_to_end(name, f_keras_model):
     assert before_output_names == _km.metadata.output_names
 
     # freeze session
-    filepath_pb = _km.filepath_pb(_md.epoch, dir=DIR)
+    filepath_pb = _km.filepath_pb(_md.epoch, dir_=DIR)
     assert not os.path.exists(filepath_pb)
-    ret = _km.freeze_graph(dir=DIR)
+    ret = _km.freeze_graph(dir_=DIR)
     assert ret == 0, '%s freeze_session failed due to error %d' % (name, ret)
-    assert os.path.exists(filepath_pb)
+    assert_exists(filepath_pb)
     assert _md == _km.metadata
 
     # reload pb

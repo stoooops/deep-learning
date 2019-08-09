@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-
+import os
 from src.meta.constants import UNKNOWN_EPOCH
+from src.utils import file_utils
 
 from src.utils.logger import Logging
 
@@ -31,3 +32,68 @@ class Metadata:
         logger.debug('%s epoch = %s', prefix or self.name, self.epoch)
         logger.debug('%s inputs = %s', prefix or self.name, self.input_names)
         logger.debug('%s outputs = %s', prefix or self.name, self.output_names)
+
+    # Directory
+
+    def file_dir(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        result = file_utils.model_dir(self.name, epoch)
+        if not os.path.exists(result):
+            os.makedirs(result)
+        return result
+
+    # Filename
+
+    def filename_no_ext(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filename_no_ext(self.name, epoch)
+
+    # .h5 - architecture/weights/optimizer
+
+    def filename_h5(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filename_h5(self.name, epoch)
+
+    def filepath_h5(self, epoch=None, dir_=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filepath_h5(self.name, epoch, dir_=dir_)
+
+    # .h5 - architecture/weights
+
+    def filename_no_opt_h5(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filename_no_opt_h5(self.name, epoch)
+
+    def filepath_no_opt_h5(self, epoch=None, dir_=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filepath_no_opt_h5(self.name, epoch, dir_=dir_)
+
+    # .h5 - weights
+
+    def filename_weights_h5(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filename_weights_h5(self.name, epoch)
+
+    def filepath_weights_h5(self, epoch=None, dir_=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filepath_weights_h5(self.name, epoch, dir_=dir_)
+
+    # .pb
+
+    def filename_pb(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filename_pb(self.name, epoch)
+
+    def filepath_pb(self, epoch=None, dir_=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filepath_pb(self.name, epoch, dir_=dir_)
+
+    # .tflite - INT8
+
+    def filename_tflite(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filename_tflite(self.name, epoch)
+
+    def filepath_tflite(self, epoch=None, dir_=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filepath_tflite(self.name, epoch, dir_=dir_)

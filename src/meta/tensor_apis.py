@@ -65,53 +65,66 @@ class AbstractTensorModel(ABC):
 
     # Directory
 
-    def file_dir(self, epoch):
-        result = os.path.join(MODELS_DIR, self.filename_no_ext(epoch))
+    def file_dir(self, epoch=None):
+        epoch = epoch if epoch is not None else self.metadata.epoch
+        result = os.path.join(MODELS_DIR, self.filename_no_ext(epoch=epoch))
         if not os.path.exists(result):
             os.makedirs(result)
         return result
 
     # Filename
 
-    def filename_no_ext(self, epoch):
+    def filename_no_ext(self, epoch=None):
+        epoch = epoch if epoch is not None else self.metadata.epoch
         return '%s_%03d' % (self.name, epoch)
 
     # .h5 - architecture/weights/optimizer
 
-    def filename_h5(self, epoch):
-        return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_H5)
+    def filename_h5(self, epoch=None):
+        return self.metadata.filename_h5(epoch=epoch)
 
-    def filepath_h5(self, epoch, dir=None):
-        return os.path.join(dir or self.file_dir(epoch), self.filename_h5(epoch))
+    def filepath_h5(self, epoch=None, dir_=None):
+        return self.metadata.filepath_h5(epoch=epoch, dir_=dir_)
 
     # .h5 - architecture/weights
 
-    def filename_no_opt_h5(self, epoch):
-        return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_ARCH_WEIGHTS_H5)
+    def filename_no_opt_h5(self, epoch=None):
+        return self.metadata.filename_no_opt_h5(epoch=epoch)
 
-    def filepath_no_opt_h5(self, epoch, dir=None):
-        return os.path.join(dir or self.file_dir(epoch), self.filename_no_opt_h5(epoch))
+    def filepath_no_opt_h5(self, epoch=None, dir_=None):
+        return self.metadata.filepath_no_opt_h5(epoch=epoch, dir_=dir_)
 
     # .h5 - weights
 
-    def filename_weights_h5(self, epoch):
-        return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_WEIGHTS_H5)
+    def filename_weights_h5(self, epoch=None):
+        return self.metadata.filename_weights_h5(epoch=epoch)
 
-    def filepath_weights_h5(self, epoch, dir=None):
-        return os.path.join(dir or self.file_dir(epoch), self.filename_weights_h5(epoch))
+    def filepath_weights_h5(self, epoch=None, dir_=None):
+        return self.metadata.filepath_weights_h5(epoch=epoch, dir_=dir_)
 
     # .pb
 
-    def filename_pb(self, epoch):
-        return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_PB)
+    def filename_pb(self, epoch=None):
+        return self.metadata.filename_pb(epoch=epoch)
 
-    def filepath_pb(self, epoch, dir=None):
-        return os.path.join(dir or self.file_dir(epoch), self.filename_pb(epoch))
+    def filepath_pb(self, epoch=None, dir_=None):
+        return self.metadata.filepath_pb(epoch=epoch, dir_=dir_)
 
     # .tflite - INT8
 
-    def filename_tflite(self, epoch):
-        return '%s%s' % (self.filename_no_ext(epoch), EXTENSION_INT8_TFLITE)
+    def filename_tflite(self, epoch=None):
+        return self.metadata.filename_tflite(epoch=epoch)
 
-    def filepath_tflite(self, epoch, dir=None):
-        return os.path.join(dir or self.file_dir(epoch), self.filename_tflite(epoch))
+    def filepath_tflite(self, epoch=None, dir_=None):
+        return self.metadata.filepath_tflite(epoch=epoch, dir_=dir_)
+
+
+class AbstractTensorModelSaver(ABC):
+
+    @abstractmethod
+    def save(self, filepath):
+        pass
+
+    @abstractmethod
+    def save_weights(self, filepath):
+        pass
