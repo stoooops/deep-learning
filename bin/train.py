@@ -25,7 +25,7 @@ logger = HuliLogging.get_logger(__name__)
 HuliLogging.attach_stdout()
 
 print('=' * 50)
-print('tensorflow-%s' % tf.__version__)
+print(tf.__name__, '-', tf.__version__, sep='')
 print('=' * 50)
 
 
@@ -190,4 +190,5 @@ if __name__ == '__main__':
 
     logger.info('')
     logger.info('> ' + ' '.join(sys.argv))
+    logger.info('')
     logger.info('[%.3fs] SUCCESS!!!', time.time() - now)

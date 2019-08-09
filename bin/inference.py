@@ -163,4 +163,5 @@ if __name__ == '__main__':
 
     logger.info('')
     logger.info('> ' + ' '.join(sys.argv))
+    logger.info('')
     logger.info('[%.3fs] SUCCESS!!!', time.time() - now)
