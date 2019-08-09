@@ -14,10 +14,10 @@ from src.meta.tensorflow import TensorFlowModel
 from src.meta.tflite import TfLiteModel
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.cuda_utils import gpu_info
-from src.utils.logger import HuliLogging
+from src.utils.logger import Logging
 
 
-logger = HuliLogging.get_logger(__name__)
+logger = Logging.get_logger(__name__)
 
 SUPPORTED_MODES = [TensorApi.NONE, TensorApi.KERAS, TensorApi.TENSORFLOW, TensorApi.TF_LITE]
 
@@ -379,7 +379,6 @@ class MetaModelModeConverter:
         logger.debug('%s Converting to tflite INT8 model...', self.meta_model.log_prefix())
         try:
             tflite_model = converter.convert()
-            logger.debug('tflite_model: %s', tflite_model)
         except Exception as e:
             logger.exception('%s Caught exception while converting model to tflite INT8: %s',
                              self.meta_model.log_prefix(), e)

@@ -5,10 +5,10 @@
 
 import ctypes
 
-from src.utils.logger import HuliLogging
+from src.utils.logger import Logging
 from src.utils import io_utils
 
-logger = HuliLogging.get_logger(__name__)
+logger = Logging.get_logger(__name__)
 
 
 # Some constants taken from cuda.h

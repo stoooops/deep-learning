@@ -17,12 +17,12 @@ import sys
 import time
 import argparse
 from src.utils.color_utils import bcolors
-from src.utils.logger import HuliLogging
-HuliLogging.attach_stdout()
-HuliLogging.debug_dim()
-HuliLogging.info_blue()
-HuliLogging.warn_yellow()
-HuliLogging.error_red()
+from src.utils.logger import Logging
+Logging.attach_stdout()
+# HuliLogging.debug_dim()
+# HuliLogging.info_blue()
+# HuliLogging.warn_yellow()
+# HuliLogging.error_red()
 
 
 from src.data.cifar100 import CIFAR_100_CLASSES, CIFAR_100_INPUT_SHAPE, load_cifar100_data
@@ -35,7 +35,7 @@ from src.models.resnet50 import NAME as NAME_RESNET50
 from src.models import factory
 from src.utils.file_utils import MODELS_DIR
 
-logger = HuliLogging.get_logger(__name__)
+logger = Logging.get_logger(__name__)
 
 print('=' * 50)
 print(tf.__name__, '-', tf.__version__, sep='')

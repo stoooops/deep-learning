@@ -18,7 +18,7 @@ logging._levelToName[logging.CRITICAL] = 'FATAL'
 FILENAME = os.path.normpath(os.path.join(TMP_DIR, 'huli.log'))
 
 
-class HuliLogging:
+class Logging:
     """Static logging functionality"""
 
     # extra handlers to be attached when constructing a new logger
@@ -53,8 +53,8 @@ class HuliLogging:
     @staticmethod
     def get_logger(name):
         """Construct a new logger with the given name. Clients should pass in __name__."""
-        if HuliLogging._LOGGERS.get(name) is not None:
-            return HuliLogging._LOGGERS[name]
+        if Logging._LOGGERS.get(name) is not None:
+            return Logging._LOGGERS[name]
 
         logger = logging.getLogger(name)
 
@@ -62,37 +62,37 @@ class HuliLogging:
         logger.setLevel(logging.DEBUG)
 
         # attach any extra handlers
-        for handler in HuliLogging._HANDLERS:
+        for handler in Logging._HANDLERS:
             logger.addHandler(handler)
 
         # keep track of all the loggers
-        HuliLogging._LOGGERS[name] = logger
+        Logging._LOGGERS[name] = logger
 
         # Don't let tensorflow duplicate this logger
         logger.propagate = False
 
-        if HuliLogging._debug_dim:
-            HuliLogging.debug_dim(logger=logger)
+        if Logging._debug_dim:
+            Logging.debug_dim(logger=logger)
 
-        if HuliLogging._info_blue:
-            HuliLogging.info_blue(logger=logger)
+        if Logging._info_blue:
+            Logging.info_blue(logger=logger)
 
-        if HuliLogging._warn_yellow:
-            HuliLogging.warn_yellow(logger=logger)
+        if Logging._warn_yellow:
+            Logging.warn_yellow(logger=logger)
 
-        if HuliLogging._error_red:
-            HuliLogging.error_red(logger=logger)
+        if Logging._error_red:
+            Logging.error_red(logger=logger)
 
         return logger
 
     @staticmethod
     def attach_stdout():
-        if not HuliLogging._std_out_attached:
+        if not Logging._std_out_attached:
             stdout_handler = logging.StreamHandler(sys.stdout)
-            stdout_handler.setFormatter(HuliLogging.FORMATTER)
-            HuliLogging.attach_handler(stdout_handler)
+            stdout_handler.setFormatter(Logging.FORMATTER)
+            Logging.attach_handler(stdout_handler)
 
-        HuliLogging._std_out_attached = True
+        Logging._std_out_attached = True
 
     @staticmethod
     def debug_dim(logger=None):
@@ -101,12 +101,12 @@ class HuliLogging:
             return
 
         # else apply to all if we haven't already
-        if not HuliLogging._debug_dim:
+        if not Logging._debug_dim:
             # update existing loggers
-            for name, logger in HuliLogging._LOGGERS.items():
-                HuliLogging.debug_dim(logger=logger)
+            for name, logger in Logging._LOGGERS.items():
+                Logging.debug_dim(logger=logger)
 
-        HuliLogging._debug_dim = True
+        Logging._debug_dim = True
 
     @staticmethod
     def info_blue(logger=None):
@@ -115,12 +115,12 @@ class HuliLogging:
             return
 
         # else apply to all if we haven't already
-        if not HuliLogging._info_blue:
+        if not Logging._info_blue:
             # update existing loggers
-            for name, logger in HuliLogging._LOGGERS.items():
-                HuliLogging.info_blue(logger=logger)
+            for name, logger in Logging._LOGGERS.items():
+                Logging.info_blue(logger=logger)
 
-        HuliLogging._info_blue = True
+        Logging._info_blue = True
 
     @staticmethod
     def warn_yellow(logger=None):
@@ -130,12 +130,12 @@ class HuliLogging:
             return
 
         # else apply to all if we haven't already
-        if not HuliLogging._warn_yellow:
+        if not Logging._warn_yellow:
             # update existing loggers
-            for name, logger in HuliLogging._LOGGERS.items():
-                HuliLogging.warn_yellow(logger=logger)
+            for name, logger in Logging._LOGGERS.items():
+                Logging.warn_yellow(logger=logger)
 
-        HuliLogging._warn_yellow = True
+        Logging._warn_yellow = True
 
     @staticmethod
     def error_red(logger=None):
@@ -145,22 +145,22 @@ class HuliLogging:
             return
 
         # else apply to all if we haven't already
-        if not HuliLogging._error_red:
+        if not Logging._error_red:
             # update existing loggers
-            for name, logger in HuliLogging._LOGGERS.items():
-                HuliLogging.error_red(logger=logger)
+            for name, logger in Logging._LOGGERS.items():
+                Logging.error_red(logger=logger)
 
-        HuliLogging._error_red = True
+        Logging._error_red = True
 
     @staticmethod
     def attach_handler(handler):
         """
         Add a handler to the list of extra handlers to be attached when creating a new logger instance
         """
-        HuliLogging._HANDLERS.append(handler)
+        Logging._HANDLERS.append(handler)
 
         # update existing loggers
-        for name, logger in HuliLogging._LOGGERS.items():
+        for name, logger in Logging._LOGGERS.items():
             logger.addHandler(handler)
 
     @staticmethod
@@ -171,15 +171,6 @@ class HuliLogging:
         """
         handles = [handler.stream.fileno() for handler in logger.handlers]
         if logger.parent:
-            handles += HuliLogging.get_file_handles(logger.parent)
+            handles += Logging.get_file_handles(logger.parent)
         return handles
-
-
-class HuliLoggingNameFilter:
-    """Filter logs based on log record: %(name)s"""
-    def __init__(self, name):
-        self._name = name
-
-    def filter(self, logRecord):
-        return logRecord.name == self._name
 

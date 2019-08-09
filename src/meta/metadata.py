@@ -3,9 +3,9 @@
 
 from src.meta.constants import UNKNOWN_EPOCH
 
-from src.utils.logger import HuliLogging
+from src.utils.logger import Logging
 
-logger = HuliLogging.get_logger(__name__)
+logger = Logging.get_logger(__name__)
 
 
 class Metadata:

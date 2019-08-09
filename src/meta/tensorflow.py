@@ -9,9 +9,9 @@ from src.meta.constants import TENSORBOARD_DIR
 from src.meta.errors import *
 from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
-from src.utils.logger import HuliLogging
+from src.utils.logger import Logging
 
-logger = HuliLogging.get_logger(__name__)
+logger = Logging.get_logger(__name__)
 
 
 class TensorFlowModel(AbstractTensorModel):

@@ -12,13 +12,14 @@ import sys
 import time
 import argparse
 
-from src.utils.logger import HuliLogging
-HuliLogging.attach_stdout()
-HuliLogging.debug_dim()
-HuliLogging.info_blue()
-HuliLogging.warn_yellow()
-HuliLogging.error_red()
-logger = HuliLogging.get_logger(__name__)
+from src.utils.logger import Logging
+from src.utils.color_utils import bcolors
+Logging.attach_stdout()
+#HuliLogging.debug_dim()
+#HuliLogging.info_blue()
+#HuliLogging.warn_yellow()
+#HuliLogging.error_red()
+logger = Logging.get_logger(__name__)
 
 
 from src.meta.tensor_apis import TensorApi
@@ -227,7 +228,7 @@ if __name__ == '__main__':
     now = time.time()
     logger.info('')
     logger.info('')
-    logger.info('> ' + ' '.join(sys.argv))
+    bcolors.light_cyan(logger.info, '> ' + ' '.join(sys.argv))
 
     ret = 0
     try:
@@ -236,12 +237,12 @@ if __name__ == '__main__':
         logger.exception('Uncaught exception: %s', e)
         ret = 1
     logger.info('')
-    logger.info('> ' + ' '.join(sys.argv))
+    bcolors.light_cyan(logger.info, '> ' + ' '.join(sys.argv))
     logger.info('')
 
     if ret == 0:
-        logger.info('[%.3fs] SUCCESS!!!', time.time() - now)
+        bcolors.light_green(logger.info, '[%.3fs] SUCCESS!!!', time.time() - now)
     else:
-        logger.error('[%.3fs] FAIL!!!', time.time() - now)
+        bcolors.light_red(logger.error, '[%.3fs] FAIL!!!', time.time() - now)
 
     exit(ret)

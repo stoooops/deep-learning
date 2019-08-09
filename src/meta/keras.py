@@ -10,11 +10,11 @@ from src.meta.constants import EXTENSION_H5, TENSORBOARD_DIR
 from src.meta.errors import *
 from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
-from src.utils.logger import HuliLogging
+from src.utils.logger import Logging
 from src.utils.file_utils import MODELS_DIR
 from src.utils import io_utils
 
-logger = HuliLogging.get_logger(__name__)
+logger = Logging.get_logger(__name__)
 
 
 class KerasModel(AbstractTensorModel):
