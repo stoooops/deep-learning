@@ -151,6 +151,7 @@ def main():
 
 
 if __name__ == '__main__':
+    now = time.time()
     logger.info('')
     logger.info('')
     logger.info('> ' + ' '.join(sys.argv))
@@ -158,3 +159,8 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         logger.exception(e)
+        exit(1)
+
+    logger.info('')
+    logger.info('> ' + ' '.join(sys.argv))
+    logger.info('[%.3fs] SUCCESS!!!', time.time() - now)
