@@ -377,7 +377,13 @@ class MetaModelModeConverter:
         converter.optimizations = [tf.lite.Optimize.DEFAULT]  # seems that result file has same size no matter what
 
         logger.debug('%s Converting to tflite INT8 model...', self.meta_model.log_prefix())
-        tflite_model = converter.convert()
+        try:
+            tflite_model = converter.convert()
+            logger.debug('tflite_model: %s', tflite_model)
+        except Exception as e:
+            logger.exception('%s Caught exception while converting model to tflite INT8: %s',
+                             self.meta_model.log_prefix(), e)
+            return ERROR_TF_META_CAUGHT_EXCEPTION
         tflite_filepath = self.meta_model.filepath_tflite(self.meta_model.metadata.epoch)
         logger.debug('%s Saving tflite model to %s...', self.meta_model.log_prefix(), tflite_filepath)
         with open(tflite_filepath, 'wb') as o_:
