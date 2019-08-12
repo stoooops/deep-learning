@@ -26,8 +26,7 @@ Logging.attach_stdout()
 
 
 from src.data.cifar100 import CIFAR_100_CLASSES, CIFAR_100_INPUT_SHAPE, load_cifar100_data
-from src.meta.meta import MetaModel, MetaModelFactory
-from src.meta.tensor_apis import TensorApi
+from src.keras.model import KerasModel
 from src.models.basic import NAME as NAME_BASIC
 from src.models.batchn import NAME as NAME_BATCHN
 from src.models.conv import NAME as NAME_CONV
@@ -70,7 +69,7 @@ def model_compile(model):
 
 def get_model(name, epoch):
     model_create_func = factory.get_model_create_func(name, INPUT_SHAPE, OUTPUT_LEN)
-    ret, model = MetaModelFactory.from_weights_h5(name, epoch, model_create_func)
+    ret, model = KerasModel.from_weights_h5(name, epoch, model_create_func)
     if ret != 0:
         return ret, None
     model_compile(model)
@@ -97,7 +96,7 @@ def log_bold(*argv, **kwargs):
     logger.info(log_prefix(epoch) + ' ' + line() + ' ' + argv[0] + ' ' + line(), *argv[1:], **kwargs)
 
 
-def train(model, train, test, epochs, initial_epoch=0, skip_pb=False, skip_tflite=False):
+def train(model, train, test, epochs, initial_epoch=0):
     """
     :type model: MetaModel
     """
@@ -114,57 +113,26 @@ def train(model, train, test, epochs, initial_epoch=0, skip_pb=False, skip_tflit
         log_bold('EVALUATE')
         evaluate(model, test)
 
-        # Save
-        recompile = False
-        if not skip_pb and not skip_tflite:
-            log_bold('SAVE_ALL')
-            ret = model.save_all(representative_data=train[0])
-            if ret != 0:
-                logger.error('%s Failed saving all due to error %d', model.name, ret)
-                exit(1)
-            recompile = True
-        else:
-            # keras
-            log_bold('SAVE')
-            ret = model.save()
-            if ret != 0:
-                logger.error('%s Failed saving due to error %d', model.name, ret)
-                exit(1)
+        log_bold('SAVE')
+        ret = model.save(model.filepath_h5())
+        if ret != 0:
+            logger.error('%s Failed saving due to error %d', model.name, ret)
+            exit(1)
 
-            # pb
-            if not skip_pb:
-                log_bold('SAVE TO %s', TensorApi.TENSORFLOW)
-                ret = model.save_to(TensorApi.TENSORFLOW)
-                if ret != 0:
-                    logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TENSORFLOW, ret)
-                    exit(1)
-                recompile = True
-
-            # tflite
-            if not skip_tflite:
-                log_bold('SAVE TO %s', TensorApi.TF_LITE)
-                ret = model.save_to(TensorApi.TF_LITE, representative_data=train[0])
-                if ret != 0:
-                    logger.error('%s Failed saving to %s due to error %d', model.name, TensorApi.TF_LITE, ret)
-                    exit(1)
-
-        if recompile:
-            # Recompile after saving, which can corrupt state because the model gets recreated
-            log_bold('RECOMPILE')
-            model_compile(model)
-
-
-
+        log_bold('SAVE WEIGHTS')
+        ret = model.save_weights(model.filepath_weights_h5())
+        if ret != 0:
+            logger.error('%s Failed saving weights due to error %d', model.name, ret)
+            exit(1)
 
 def get_args():
     p = argparse.ArgumentParser()
     p.add_argument('-e', '--epochs', type=int, default=3, help='Training epochs.')
     p.add_argument('-i', '--initial-epoch', type=int, default=0, help='Initial epoch.')
     p.add_argument('-m', '--model', required=True, default=NAME_BASIC, help='Model name. One of %s' % MODEL_NAMES)
-    p.add_argument('--skip-pb', default=False, help='Skip pb serialization', action="store_true")
-    p.add_argument('--skip-tflite', default=False, help='Skip tflite serialization', action="store_true")
     args, unknown = p.parse_known_args()
-    assert args.model in MODEL_NAMES
+    for m in args.model.split(','):
+        assert m in MODEL_NAMES, 'Model name: %s not found in %s' % (m, MODEL_NAMES)
     assert args.epochs > args.initial_epoch
     return args
 
@@ -173,29 +141,28 @@ def main():
     # Args
     log_bold('PARSE')
     args = get_args()
-    model_name = args.model
+    model_names = args.model.split(',')
     initial_epoch = args.initial_epoch
     global epoch
     epoch = initial_epoch
     epochs = args.epochs
-    skip_tflite = args.skip_tflite
 
     # Data
     log_bold('DATA')
     (train_images, train_labels), (test_images, test_labels) = get_data()
 
     # Model
-    log_bold('MODEL')
-    ret, model = get_model(model_name, initial_epoch)
-    if ret != 0:
-        logger.error('Getting model failed with error %d', ret)
-        exit(1)
-    model.dump()
+    for model_name in model_names:
+        log_bold('MODEL: %s', model_name)
+        ret, model = get_model(model_name, initial_epoch)
+        if ret != 0:
+            logger.error('Getting model failed with error %d', ret)
+            exit(1)
+        model.dump()
 
-    # Train
-    log_bold('TRAIN')
-    train(model, (train_images, train_labels), (test_images, test_labels), epochs, initial_epoch=initial_epoch,
-          skip_tflite=skip_tflite)
+        # Train
+        log_bold('TRAIN')
+        train(model, (train_images, train_labels), (test_images, test_labels), epochs)
 
 
 if __name__ == '__main__':
