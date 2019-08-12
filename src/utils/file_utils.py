@@ -27,7 +27,8 @@ LOG_DIR = os.path.normpath(os.path.join(TMP_DIR, 'logs'))
 # Directory
 
 def model_dir(name, epoch):
-    result = os.path.join(MODELS_DIR, model_filename_no_ext(name, epoch))
+    # models/basic/001/
+    result = os.path.join(os.path.join(MODELS_DIR, name), '%03d' % epoch)
     if not os.path.exists(result):
         os.makedirs(result)
     return result

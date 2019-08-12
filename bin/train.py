@@ -69,7 +69,10 @@ def model_compile(model):
 
 def get_model(name, epoch):
     model_create_func = factory.get_model_create_func(name, INPUT_SHAPE, OUTPUT_LEN)
-    ret, model = KerasModel.from_weights_h5(name, epoch, model_create_func)
+    if epoch == 0:
+        ret, model = KerasModel.from_factory_func(name, model_create_func)
+    else:
+        ret, model = KerasModel.from_weights_h5(name, epoch, model_create_func)
     if ret != 0:
         return ret, None
     model_compile(model)

@@ -50,17 +50,24 @@ class KerasModel:
         self.metadata.output_names = output_names
 
         # tensorboard callback
-        tensor_board_log_dir = os.path.join(TENSORBOARD_LOG_DIR,
-                                            datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
+        tensor_board_log_dir = os.path.join(os.path.join(TENSORBOARD_LOG_DIR, self.name),
+                                            datetime.now().strftime("%Y%m%d-%H%M%S"))
         self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensor_board_log_dir)
 
         # checkpoint
-        file_dir = os.path.join(file_utils.MODELS_DIR, '%s_{epoch:03d}' % self.name)
+        file_dir = os.path.join(os.path.join(file_utils.MODELS_DIR, self.name), '{epoch:03d}')
         checkpoint_format = '%s_{epoch:03d}_checkpoint%s' % (self.name, file_utils.EXTENSION_H5)
         checkpoint_filepath_format = os.path.join(file_dir, checkpoint_format)
         self.keras_checkpoint_callback = keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath_format)
 
         self.f_construct_keras_model = f_construct_keras_model
+
+    @staticmethod
+    def from_factory_func(name, f_construct_keras_model):
+        keras_model = f_construct_keras_model()
+        metadata = Metadata(name, epoch=0)
+        result = KerasModel(name, metadata, keras_model, f_construct_keras_model)
+        return 0, result
 
     @staticmethod
     def from_weights_h5(name, epoch, f_construct_keras_model, filepath_weights_h5=None):
@@ -73,8 +80,8 @@ class KerasModel:
         logger.debug('[%s|%d] Loading keras model weights from %s...', name, epoch, filepath_weights_h5)
         keras_model.load_weights(filepath_weights_h5)
 
-        model = KerasModel(name, metadata, keras_model, f_construct_keras_model=f_construct_keras_model)
-        return 0, model
+        result = KerasModel(name, metadata, keras_model, f_construct_keras_model=f_construct_keras_model)
+        return 0, result
 
     # file dir
 
