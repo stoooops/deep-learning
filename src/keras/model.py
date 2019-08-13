@@ -15,6 +15,9 @@ from src.utils import io_utils
 logger = Logging.get_logger(__name__)
 
 
+# function wrappers
+
+
 class KerasModel:
 
     def __init__(self, name, metadata, keras_model, f_construct_keras_model=None):

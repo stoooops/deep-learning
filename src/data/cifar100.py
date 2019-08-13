@@ -4,8 +4,9 @@ from tensorflow import keras
 
 import numpy as np
 
+CIFAR_100 = 'cifar100'
 
-CIFAR_100 = keras.datasets.cifar100
+DATASET_CIFAR100 = keras.datasets.cifar100
 
 CIFAR_100_CLASSES = np.array([
     'apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle',
@@ -29,7 +30,7 @@ CIFAR_100_INPUT_SHAPE = (32, 32, 3)
 
 
 def load_cifar100_data(normalize=True):
-    (train_images, train_labels), (test_images, test_labels) = CIFAR_100.load_data()
+    (train_images, train_labels), (test_images, test_labels) = DATASET_CIFAR100.load_data()
 
     if normalize:
         train_images = train_images / 255.0
