@@ -9,10 +9,11 @@ import datetime
 ##################################################
 
 EXTENSION_H5 = '.h5'                             # architecture, weights, and optimizer
-EXTENSION_ARCH_WEIGHTS_H5 = '_no_optimizer.h5'   # architecture, weights
-EXTENSION_WEIGHTS_H5 = '_weights.h5'             # weights
-EXTENSION_PB = '.pb'
-EXTENSION_INT8_TFLITE = '_int8.tflite'
+EXTENSION_H5_ARCH_WEIGHTS = '_no_optimizer.h5'   # architecture, weights
+EXTENSION_H5_WEIGHTS = '_weights.h5'             # weights
+EXTENSION_MD = '.md'                             # metadata
+EXTENSION_PB = '.pb'                             # protobuf
+EXTENSION_INT8_TFLITE = '_int8.tflite'           # INT8 tflite
 
 
 ##################################################
@@ -74,7 +75,7 @@ def model_filepath_h5(name, epoch, dir_=None):
 # .h5 - architecture/weights
 
 def model_filename_no_opt_h5(name, epoch):
-    return '%s%s' % (model_filename_no_ext(name, epoch), EXTENSION_ARCH_WEIGHTS_H5)
+    return '%s%s' % (model_filename_no_ext(name, epoch), EXTENSION_H5_ARCH_WEIGHTS)
 
 
 def model_filepath_no_opt_h5(name, epoch, dir_=None):
@@ -84,7 +85,7 @@ def model_filepath_no_opt_h5(name, epoch, dir_=None):
 # .h5 - weights
 
 def model_filename_weights_h5(name, epoch):
-    return '%s%s' % (model_filename_no_ext(name, epoch), EXTENSION_WEIGHTS_H5)
+    return '%s%s' % (model_filename_no_ext(name, epoch), EXTENSION_H5_WEIGHTS)
 
 
 def model_filepath_weights_h5(name, epoch, dir_=None):
