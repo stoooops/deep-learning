@@ -62,23 +62,38 @@ class KerasModel(InferenceModel):
 
     @staticmethod
     def from_factory_func(name, f_construct_keras_model):
-        keras_model = f_construct_keras_model()
+
+        # metadata
         metadata = Metadata(name, epoch=0)
-        result = KerasModel(name, metadata, keras_model, f_construct_keras_model)
+
+        # keras.Model
+        keras_model = f_construct_keras_model()
+
+        # KerasModel
+        result = KerasModel(metadata.name, metadata, keras_model, f_construct_keras_model)
         return 0, result
 
     @staticmethod
-    def from_weights_h5(name, epoch, f_construct_keras_model, filepath_weights_h5=None):
-        metadata = Metadata(name, epoch=epoch)
+    def from_weights_h5(filepath_md, f_construct_keras_model, filepath_weights_h5):
+        assert os.path.splitext(filepath_md)[1] == file_utils.EXTENSION_MD
+        assert filepath_weights_h5[-len(file_utils.EXTENSION_H5_WEIGHTS):] == file_utils.EXTENSION_H5_WEIGHTS
 
-        logger.debug('[%s|%d] Constructing keras model from factory function...', name, epoch)
+        # metadata
+        ret, metadata = Metadata.from_md(filepath_md)
+        if ret != 0:
+            return ret, None
+
+        # keras.Model
+        logger.debug('[%s|%d] Constructing keras model from factory function...', metadata.name, metadata.epoch)
         keras_model = f_construct_keras_model()
 
-        filepath_weights_h5 = metadata.filepath_weights_h5() if filepath_weights_h5 is None else filepath_weights_h5
-        logger.debug('[%s|%d] Loading keras model weights from %s...', name, epoch, filepath_weights_h5)
+        # weights
+        logger.debug('[%s|%d] Loading keras model weights from %s...', metadata.name, metadata.epoch,
+                     filepath_weights_h5)
         keras_model.load_weights(filepath_weights_h5)
 
-        result = KerasModel(name, metadata, keras_model, f_construct_keras_model=f_construct_keras_model)
+        # KerasModel
+        result = KerasModel(metadata.name, metadata, keras_model, f_construct_keras_model=f_construct_keras_model)
         return 0, result
 
     # file dir
@@ -122,6 +137,10 @@ class KerasModel(InferenceModel):
     # debug APIs
 
     def dump(self):
+        ret = self.metadata.dump(self.log_prefix())
+        if ret != 0:
+            return ret
+
         ret = self.summary(print_fn=io_utils.prefix_print_fn(logger.debug, self.log_prefix()))
         if ret != 0:
             return ret

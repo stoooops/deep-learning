@@ -92,6 +92,16 @@ def model_filepath_weights_h5(name, epoch, dir_=None):
     return os.path.join(dir_ or model_dir(name, epoch), model_filename_weights_h5(name, epoch))
 
 
+# .md - metadata
+
+def model_filename_md(name, epoch):
+    return '%s%s' % (model_filename_no_ext(name, epoch), EXTENSION_MD)
+
+
+def model_filepath_md(name, epoch, dir_=None):
+    return os.path.join(dir_ or model_dir(name, epoch), model_filename_md(name, epoch))
+
+
 # .pb
 
 def model_filename_pb(name, epoch):

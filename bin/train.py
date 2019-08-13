@@ -32,7 +32,7 @@ from src.models.batchn import NAME as NAME_BATCHN
 from src.models.conv import NAME as NAME_CONV
 from src.models.resnet50 import NAME as NAME_RESNET50
 from src.models import factory
-from src.utils.file_utils import MODELS_DIR
+from src.utils import file_utils
 
 logger = Logging.get_logger(__name__)
 
@@ -48,10 +48,6 @@ MODEL_NAMES = [NAME_BASIC, NAME_BATCHN, NAME_CONV, NAME_RESNET50]
 
 
 epoch = 0
-
-def get_filepath(model_name, epoch):
-    filepath = os.path.join(MODELS_DIR, '%s_%03d.h5' % (model_name, epoch))
-    return filepath
 
 
 def get_data():
@@ -72,7 +68,9 @@ def get_model(name, epoch_):
     if epoch_ == 0:
         ret_, model = KerasModel.from_factory_func(name, model_create_func)
     else:
-        ret_, model = KerasModel.from_weights_h5(name, epoch_, model_create_func)
+        filepath_md = file_utils.model_filepath_md(name, epoch_)
+        filepath_weights_md = file_utils.model_filepath_weights_h5(name, epoch_)
+        ret_, model = KerasModel.from_weights_h5(filepath_md, model_create_func, filepath_weights_md)
     if ret_ != 0:
         return ret_, None
     model_compile(model)
@@ -99,7 +97,7 @@ def log_bold(*argv, **kwargs):
     logger.info(log_prefix(epoch) + ' ' + line() + ' ' + argv[0] + ' ' + line(), *argv[1:], **kwargs)
 
 
-def train(model, train, test, epochs, initial_epoch=0):
+def train(model, train, test, epochs, initial_epoch):
     """
     :type model: MetaModel
     """
@@ -171,7 +169,7 @@ def main():
 
         # Train
         log_bold('TRAIN')
-        ret = train(model, (train_images, train_labels), (test_images, test_labels), epochs)
+        ret = train(model, (train_images, train_labels), (test_images, test_labels), epochs, initial_epoch)
         if ret != 0:
             return ret
     return 0

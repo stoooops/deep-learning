@@ -4,6 +4,7 @@ import os
 import json
 import jsonpickle
 from src.meta.constants import UNKNOWN_EPOCH
+from src.meta.errors import ERROR_TF_META_FILE_NOT_FOUND
 from src.utils import file_utils
 
 from src.utils.logger import Logging
@@ -24,6 +25,22 @@ class Metadata:
         self.epoch = epoch
         self.input_names = input_names
         self.output_names = output_names
+
+    @staticmethod
+    def from_md(filepath_md):
+        """Load the metadata file and json decode it."""
+        assert filepath_md is not None
+        assert os.path.splitext(filepath_md)[1] == file_utils.EXTENSION_MD
+        assert os.path.exists(filepath_md)
+
+        try:
+            with open(filepath_md, "r") as f:
+                result = jsonpickle.decode(f.read())
+        except Exception as e:
+            logger.exception('Failed loading metadata filed from %s: %s', filepath_md, e)
+            return ERROR_TF_META_FILE_NOT_FOUND, None
+
+        return 0, result
 
     def save(self, filepath):
         assert os.path.splitext(filepath)[1] == file_utils.EXTENSION_MD
@@ -90,6 +107,16 @@ class Metadata:
     def filepath_weights_h5(self, epoch=None, dir_=None):
         epoch = epoch if epoch is not None else self.epoch
         return file_utils.model_filepath_weights_h5(self.name, epoch, dir_=dir_)
+
+    # .md - metadata
+
+    def filename_md(self, epoch=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filename_md(self.name, epoch)
+
+    def filepath_md(self, epoch=None, dir_=None):
+        epoch = epoch if epoch is not None else self.epoch
+        return file_utils.model_filepath_md(self.name, epoch, dir_=dir_)
 
     # .pb
 
