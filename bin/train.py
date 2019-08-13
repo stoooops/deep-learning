@@ -25,7 +25,7 @@ Logging.attach_stdout()
 # HuliLogging.error_red()
 
 
-from src.data.cifar100 import CIFAR_100_CLASSES, CIFAR_100_INPUT_SHAPE, load_cifar100_data
+from src.data import cifar100
 from src.keras.model import KerasModel
 from src.models.basic import NAME as NAME_BASIC
 from src.models.batchn import NAME as NAME_BATCHN
@@ -41,8 +41,8 @@ print(tf.__name__, '-', tf.__version__, sep='')
 print('=' * 50)
 
 
-INPUT_SHAPE = CIFAR_100_INPUT_SHAPE
-OUTPUT_LEN = len(CIFAR_100_CLASSES)
+INPUT_SHAPE = cifar100.INPUT_SHAPE
+OUTPUT_LEN = len(cifar100.CLASSES)
 
 MODEL_NAMES = [NAME_BASIC, NAME_BATCHN, NAME_CONV, NAME_RESNET50]
 
@@ -55,11 +55,11 @@ def get_filepath(model_name, epoch):
 
 
 def get_data():
-    (train_images, train_labels), (test_images, test_labels) = load_cifar100_data()
+    (train_images, train_labels), (test_images, test_labels) = cifar100.load_data()
     assert INPUT_SHAPE == train_images.shape[1:]
     logger.info('Train: %s', train_images.shape)
     logger.info('Test: %s', test_images.shape)
-    logger.info('Classes: %s', len(CIFAR_100_CLASSES))
+    logger.info('Classes: %s', len(cifar100.CLASSES))
     return (train_images, train_labels), (test_images, test_labels)
 
 

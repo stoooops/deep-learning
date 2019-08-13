@@ -17,7 +17,7 @@ import sys
 import time
 import argparse
 
-from src.data.cifar100 import CIFAR_100, load_cifar100_data
+from src.data import cifar100
 from src.convert.keras import freeze_graph, convert_tf_lite
 from src.utils.color_utils import bcolors
 from src.utils.logger import Logging
@@ -66,8 +66,8 @@ def get_args():
 def get_data(representative_data):
     if representative_data is None:
         return None
-    elif representative_data == CIFAR_100:
-        (train_x, train_y), (test_x, test_y) = load_cifar100_data()
+    elif representative_data == cifar100.NAME:
+        (train_x, train_y), (test_x, test_y) = cifar100.load_data()
         return train_x
     else:
         assert 1 == 0, 'Unexpected representative_data: %s' % representative_data
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         logger.exception('Uncaught exception: %s', e)
-        ret = 1
+        ret_ = 1
     logger.info('')
     bcolors.light_cyan(logger.info, '> ' + ' '.join(sys.argv))
     logger.info('')

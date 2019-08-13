@@ -27,8 +27,8 @@ os.makedirs(DIR)
 print('Using tmp dir:', DIR)
 
 
-(TRAIN_X, TRAIN_Y), (TEST_X, TEST_Y) = cifar100.load_cifar100_data(normalize=True)
-X_SHAPE = cifar100.CIFAR_100_INPUT_SHAPE
+(TRAIN_X, TRAIN_Y), (TEST_X, TEST_Y) = cifar100.load_data(normalize=True)
+X_SHAPE = cifar100.INPUT_SHAPE
 Y_LENGTH = 100
 
 
