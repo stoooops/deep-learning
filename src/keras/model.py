@@ -5,6 +5,7 @@ import os
 from tensorflow import keras
 
 from src.keras.errors import ERROR_KERAS_CAUGHT_EXCEPTION
+from src.meta.inference import InferenceModel
 from src.meta.metadata import Metadata
 from src.utils.logger import Logging
 from src.utils import file_utils
@@ -13,7 +14,7 @@ from src.utils import io_utils
 logger = Logging.get_logger(__name__)
 
 
-class KerasModel:
+class KerasModel(InferenceModel):
 
     def __init__(self, name, metadata, keras_model, f_construct_keras_model=None):
         """
