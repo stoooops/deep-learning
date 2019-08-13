@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
 
-import os
-from datetime import datetime
 import tensorflow as tf
 
-from src.meta.constants import TENSORBOARD_LOG_DIR
 from src.meta.errors import *
 from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, TensorApi
 from src.utils.logger import Logging
+from src.utils import file_utils
 
 logger = Logging.get_logger(__name__)
 
@@ -109,8 +107,7 @@ class TensorFlowModel(AbstractTensorModel):
                 tf.import_graph_def(graph_def, name=name)
 
         # write tensorboard info
-        tensorboard_log_dir = os.path.join(TENSORBOARD_LOG_DIR,
-                                           datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + name)
+        tensorboard_log_dir = file_utils.tensorboard_log_dir(name)
         train_writer = tf.summary.FileWriter(tensorboard_log_dir)
         train_writer.add_graph(sess.graph)
         train_writer.flush()

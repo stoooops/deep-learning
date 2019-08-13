@@ -4,18 +4,13 @@ import os
 
 from tensorflow import keras
 
-from datetime import datetime
-from src.meta.constants import TENSORBOARD_LOG_DIR
-from src.meta.errors import *
+from src.keras.errors import ERROR_KERAS_CAUGHT_EXCEPTION
 from src.meta.metadata import Metadata
 from src.utils.logger import Logging
 from src.utils import file_utils
 from src.utils import io_utils
 
 logger = Logging.get_logger(__name__)
-
-
-# function wrappers
 
 
 class KerasModel:
@@ -53,9 +48,8 @@ class KerasModel:
         self.metadata.output_names = output_names
 
         # tensorboard callback
-        tensor_board_log_dir = os.path.join(os.path.join(TENSORBOARD_LOG_DIR, self.name),
-                                            datetime.now().strftime("%Y%m%d-%H%M%S"))
-        self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensor_board_log_dir)
+        self.keras_tensorboard_callback =\
+            keras.callbacks.TensorBoard(log_dir=file_utils.tensorboard_log_dir(self.name))
 
         # checkpoint
         file_dir = os.path.join(os.path.join(file_utils.MODELS_DIR, self.name), '{epoch:03d}')
@@ -152,7 +146,7 @@ class KerasModel:
             self.keras_model.compile(*argv, **kwargs)
         except ValueError as e:
             logger.exception(e)
-            return ERROR_TF_META_CAUGHT_EXCEPTION
+            return ERROR_KERAS_CAUGHT_EXCEPTION
         return 0
 
     def fit(self, *argv, **kwargs):
@@ -179,14 +173,14 @@ class KerasModel:
             history = self.keras_model.fit(*argv, **kwargs)
         except RuntimeError as e:
             logger.exception('%s Model was never compiled: %s', self.log_prefix(), e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
         except ValueError as e:
             logger.exception('%s Mismatch between the provided input data and what the model expects: %s',
                              self.log_prefix(), e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
         except Exception as e:
             logger.exception('%s Undocumented error: %s', self.log_prefix(), e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
         if ret != 0:
             return ret, None
 
@@ -199,10 +193,10 @@ class KerasModel:
             result = self.keras_model.evaluate(*argv, **kwargs)
         except ValueError as e:
             logger.exception('Invalid arguments: %s', e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
         except Exception as e:
             logger.exception('Undocumented error: %s', e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
         return ret, result
 
     def predict(self, *argv, **kwargs):
@@ -213,7 +207,7 @@ class KerasModel:
             logger.exception('Mismatch between the provided input data and the model\'s expectations, '
                              'or in case a stateful model receives a number of samples that is not a '
                              'multiple of the batch size: %s', e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
         return ret, y
 
     def save(self, *argv, **kwargs):
@@ -226,7 +220,7 @@ class KerasModel:
             self.keras_model.save(filepath, **kwargs)
         except Exception as e:
             logger.exception('Undocumented exception: %s', e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
 
         return ret
 
@@ -240,7 +234,7 @@ class KerasModel:
             self.keras_model.save_weights(filepath, **kwargs)
         except Exception as e:
             logger.exception('Undocumented exception: %s', e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
 
         return ret
 
@@ -251,6 +245,6 @@ class KerasModel:
         try:
             self.keras_model.summary(*argv, **kwargs)
         except ValueError as e:
-            logger.exception(e)
-            ret = ERROR_TF_META_CAUGHT_EXCEPTION
+            logger.exception('Undocumented exception: %s', e)
+            ret = ERROR_KERAS_CAUGHT_EXCEPTION
         return ret

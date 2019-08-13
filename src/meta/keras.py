@@ -6,14 +6,12 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from datetime import datetime
-from src.meta.constants import TENSORBOARD_LOG_DIR
 from src.meta.errors import *
 from src.meta.metadata import Metadata
 from src.meta.tensor_apis import AbstractTensorModel, AbstractTensorModelSaver, TensorApi
 from src.utils.logger import Logging
 from src.utils.file_utils import EXTENSION_H5, EXTENSION_PB, EXTENSION_INT8_TFLITE, MODELS_DIR
-from src.utils import io_utils
+from src.utils import file_utils, io_utils
 
 logger = Logging.get_logger(__name__)
 
@@ -50,8 +48,7 @@ class KerasModel(AbstractTensorModel):
         self.metadata.output_names = output_names
 
         # tensorboard callback
-        tensor_board_log_dir = os.path.join(TENSORBOARD_LOG_DIR,
-                                            datetime.now().strftime("%Y%m%d-%H%M%S") + '_' + self.name)
+        tensor_board_log_dir = file_utils.tensorboard_log_dir(self.name)
         self.keras_tensorboard_callback = keras.callbacks.TensorBoard(log_dir=tensor_board_log_dir)
 
         # checkpoint
@@ -394,8 +391,6 @@ class _KerasModelSaver(AbstractTensorModelSaver):
     def _save_model_tflite(self, filepath, representative_data, use_h5=True):
         assert filepath[-len(EXTENSION_INT8_TFLITE):] == EXTENSION_INT8_TFLITE, 'Bad filepath: %s' % filepath
         assert use_h5 == (self._model_h5 is not None), 'use_h5=%s but self.model_hb is: %s' % (use_h5, self._model_h5)
-
-        #import ipdb; ipdb.set_trace()
 
         if use_h5:
             log_prefix = '%s %s' % (self._log_prefix, ' [BatchN workaround]')

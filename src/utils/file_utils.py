@@ -1,12 +1,23 @@
 #!/usr/bin/env python
 
 import os
+import datetime
+
+
+##################################################
+# File extensions
+##################################################
 
 EXTENSION_H5 = '.h5'                             # architecture, weights, and optimizer
 EXTENSION_ARCH_WEIGHTS_H5 = '_no_optimizer.h5'   # architecture, weights
 EXTENSION_WEIGHTS_H5 = '_weights.h5'             # weights
 EXTENSION_PB = '.pb'
 EXTENSION_INT8_TFLITE = '_int8.tflite'
+
+
+##################################################
+# Static Directories
+##################################################
 
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -21,10 +32,14 @@ TMP_DIR = os.path.normpath(os.path.join(SRC_DIR, '../tmp'))
 
 LOG_DIR = os.path.normpath(os.path.join(TMP_DIR, 'logs'))
 
+TENSORBOARD_LOG_DIR = os.path.join(LOG_DIR, 'tensorboard')
 
-# Util functions for naming model files
 
-# Directory
+##################################################
+# Model file/directory helper functions
+##################################################
+
+# Directories
 
 def model_dir(name, epoch):
     # models/basic/001/
@@ -32,6 +47,12 @@ def model_dir(name, epoch):
     if not os.path.exists(result):
         os.makedirs(result)
     return result
+
+
+def tensorboard_log_dir(name):
+    # no need to eagerly create as tensorflow will auto-mkdir
+    return os.path.join(os.path.join(TENSORBOARD_LOG_DIR, name),
+                        datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
 
 # Filename
