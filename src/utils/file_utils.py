@@ -8,12 +8,14 @@ import datetime
 # File extensions
 ##################################################
 
-EXTENSION_H5 = '.h5'                             # architecture, weights, and optimizer
-EXTENSION_H5_ARCH_WEIGHTS = '_no_optimizer.h5'   # architecture, weights
-EXTENSION_H5_WEIGHTS = '_weights.h5'             # weights
-EXTENSION_MD = '.md'                             # metadata
-EXTENSION_PB = '.pb'                             # protobuf
-EXTENSION_INT8_TFLITE = '_int8.tflite'           # INT8 tflite
+EXTENSION_H5 = '.h5'                                     # architecture, weights, and optimizer
+EXTENSION_H5_ARCH_WEIGHTS = '_no_optimizer.h5'           # architecture, weights
+EXTENSION_H5_WEIGHTS = '_weights.h5'                     # weights
+EXTENSION_MD = '.md'                                     # metadata
+EXTENSION_PB = '.pb'                                     # protobuf
+EXTENSION_TFLITE = '.tflite'                             # tflite
+EXTENSION_INT8_TFLITE = '_int8.tflite'                   # INT8 tflite
+EXTENSION_INT8_EDGETPU_TFLITE = '_int8_edgetpu.tflite'   # INT8 tflite compiled for edgetpu
 
 
 ##################################################
@@ -120,3 +122,13 @@ def model_filename_tflite(name, epoch):
 
 def model_filepath_tflite(name, epoch, dir_=None):
     return os.path.join(dir_ or model_dir(name, epoch), model_filename_tflite(name, epoch))
+
+
+# .tflite - INT8 edgetpu
+
+def model_filename_edgetpu_tflite(name, epoch):
+    return '%s%s' % (model_filename_no_ext(name, epoch), EXTENSION_INT8_EDGETPU_TFLITE)
+
+
+def model_filepath_edgetpu_tflite(name, epoch, dir_=None):
+    return os.path.join(dir_ or model_dir(name, epoch), model_filename_edgetpu_tflite(name, epoch))

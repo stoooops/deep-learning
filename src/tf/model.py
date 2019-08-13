@@ -45,7 +45,9 @@ class TensorFlowModel(InferenceModel):
         self.output_names = [self.name + '/' + output_name for output_name in self.metadata.output_names]
         self.graph_y = [self.graph.get_tensor_by_name(name) for name in self.output_names]
 
-        self.session = tf.Session()
+        config_proto = tf.compat.v1.ConfigProto()
+        config_proto.log_device_placement = True
+        self.session = tf.compat.v1.Session(config=config_proto)
 
     def __del__(self):
         logger.info('%s Closing session...', self.name)

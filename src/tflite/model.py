@@ -32,6 +32,7 @@ class TfLiteModel(InferenceModel):
 
         self.f_quantize_in = quantize_in
         self.f_quantize_out = quantize_out
+
     def predict(self, *argv, **kwargs):
         assert len(argv) == 1
         x = argv[0]
@@ -67,7 +68,9 @@ class TfLiteModel(InferenceModel):
         assert os.path.exists(filepath_md)
         assert os.path.splitext(filepath_md)[1] == file_utils.EXTENSION_MD
         assert os.path.exists(filepath_tflite)
-        assert filepath_tflite[-len(file_utils.EXTENSION_INT8_TFLITE):] == file_utils.EXTENSION_INT8_TFLITE
+        assert os.path.splitext(filepath_tflite)[1] == file_utils.EXTENSION_TFLITE
+
+        is_edgetpu = ('edgetpu' in filepath_tflite)
 
         logger.debug('Loading metadata from %s...', filepath_md)
         ret, metadata = Metadata.from_md(filepath_md)
@@ -76,7 +79,15 @@ class TfLiteModel(InferenceModel):
 
         logger.debug('%s Loading tflite interpreter from %s...', metadata.name, filepath_tflite)
         if os.path.exists(filepath_tflite):
-            tflite_interpreter = tf.lite.Interpreter(model_path=filepath_tflite)
+            from tensorflow.lite.python.interpreter import Interpreter
+            if is_edgetpu:
+                from tensorflow.lite.python.interpreter import load_delegate
+                experimental_lib = 'libedgetpu.so.1.0'
+                logger.info('Using experimental library %s...', 'libedgetpu.so.1.0')
+                tflite_interpreter = Interpreter(model_path=filepath_tflite,
+                                                 experimental_delegates=[load_delegate(experimental_lib)])
+            else:
+                tflite_interpreter = Interpreter(model_path=filepath_tflite)
             tflite_interpreter.allocate_tensors()
 
             tflite_input_detail = tflite_interpreter.get_input_details()[0]
