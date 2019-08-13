@@ -16,15 +16,14 @@ logger = Logging.get_logger(__name__)
 
 class KerasModel(InferenceModel):
 
-    def __init__(self, name, metadata, keras_model, f_construct_keras_model=None):
+    def __init__(self, metadata, keras_model, f_construct_keras_model=None):
         """
         :type name: str
         :type metadata: Metadata
         :type keras_model: keras.Model
         """
-        assert name is not None and isinstance(name, str)
-        self.name = name
         assert metadata is not None and isinstance(metadata, Metadata)
+        self.name = metadata.name
         self.metadata = metadata
 
         # keras Model
@@ -60,6 +59,10 @@ class KerasModel(InferenceModel):
 
         self.f_construct_keras_model = f_construct_keras_model
 
+    def __del__(self):
+        logger.info('%s Closing session...', self.name)
+        keras.backend.clear_session()
+
     @staticmethod
     def from_factory_func(name, f_construct_keras_model):
 
@@ -70,7 +73,7 @@ class KerasModel(InferenceModel):
         keras_model = f_construct_keras_model()
 
         # KerasModel
-        result = KerasModel(metadata.name, metadata, keras_model, f_construct_keras_model)
+        result = KerasModel(metadata, keras_model, f_construct_keras_model)
         return 0, result
 
     @staticmethod
@@ -93,7 +96,7 @@ class KerasModel(InferenceModel):
         keras_model.load_weights(filepath_weights_h5)
 
         # KerasModel
-        result = KerasModel(metadata.name, metadata, keras_model, f_construct_keras_model=f_construct_keras_model)
+        result = KerasModel(metadata, keras_model, f_construct_keras_model=f_construct_keras_model)
         return 0, result
 
     # file dir
