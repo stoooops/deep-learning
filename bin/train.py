@@ -46,12 +46,11 @@ OUTPUT_LEN = len(CIFAR_100_CLASSES)
 
 MODEL_NAMES = [NAME_BASIC, NAME_BATCHN, NAME_CONV, NAME_RESNET50]
 
-# globals
+
 epoch = 0
 
-
-def get_filepath(model_name, epoch_):
-    filepath = os.path.join(MODELS_DIR, '%s_%03d.h5' % (model_name, epoch_))
+def get_filepath(model_name, epoch):
+    filepath = os.path.join(MODELS_DIR, '%s_%03d.h5' % (model_name, epoch))
     return filepath
 
 
@@ -68,12 +67,9 @@ def model_compile(model):
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
 
-def get_model(name, epoch_):
+def get_model(name, epoch):
     model_create_func = factory.get_model_create_func(name, INPUT_SHAPE, OUTPUT_LEN)
-    if epoch == 0:
-        ret, model = KerasModel.from_factory_func(name, model_create_func)
-    else:
-        ret, model = KerasModel.from_weights_h5(name, epoch_, model_create_func)
+    ret, model = KerasModel.from_weights_h5(name, epoch, model_create_func)
     if ret != 0:
         return ret, None
     model_compile(model)
@@ -91,8 +87,8 @@ def line():
     return '=' * 50
 
 
-def log_prefix(epoch_):
-    return '[%s|%d]' % ('train', epoch_)
+def log_prefix(epoch):
+    return '[%s|%d]' % ('train', epoch)
 
 
 def log_bold(*argv, **kwargs):
@@ -128,7 +124,6 @@ def train(model, train, test, epochs, initial_epoch=0):
         if ret != 0:
             logger.error('%s Failed saving weights due to error %d', model.name, ret)
             exit(1)
-
 
 def get_args():
     p = argparse.ArgumentParser()
