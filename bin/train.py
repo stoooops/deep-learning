@@ -67,11 +67,14 @@ def model_compile(model):
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
 
-def get_model(name, epoch):
+def get_model(name, epoch_):
     model_create_func = factory.get_model_create_func(name, INPUT_SHAPE, OUTPUT_LEN)
-    ret, model = KerasModel.from_weights_h5(name, epoch, model_create_func)
-    if ret != 0:
-        return ret, None
+    if epoch_ == 0:
+        ret_, model = KerasModel.from_factory_func(name, model_create_func)
+    else:
+        ret_, model = KerasModel.from_weights_h5(name, epoch_, model_create_func)
+    if ret_ != 0:
+        return ret_, None
     model_compile(model)
     return 0, model
 
@@ -114,16 +117,22 @@ def train(model, train, test, epochs, initial_epoch=0):
         evaluate(model, test)
 
         log_bold('SAVE')
-        ret = model.save(model.filepath_h5())
-        if ret != 0:
-            logger.error('%s Failed saving due to error %d', model.name, ret)
-            exit(1)
+        filepath_h5 = model.filepath_h5()
+        logger.debug('Saving model to %s', filepath_h5)
+        ret_ = model.save(filepath_h5)
+        if ret_ != 0:
+            logger.error('%s Failed saving to %s due to error %d', model.name, filepath_h5, ret_)
+            return ret_
 
         log_bold('SAVE WEIGHTS')
-        ret = model.save_weights(model.filepath_weights_h5())
-        if ret != 0:
-            logger.error('%s Failed saving weights due to error %d', model.name, ret)
-            exit(1)
+        filepath_weights_h5 = model.filepath_weights_h5()
+        logger.debug('Saving model weights to %s', filepath_weights_h5)
+        ret_ = model.save_weights(filepath_weights_h5)
+        if ret_ != 0:
+            logger.error('%s Failed saving weights due to error %d', model.name, ret_)
+            return ret_
+    return 0
+
 
 def get_args():
     p = argparse.ArgumentParser()
@@ -162,7 +171,10 @@ def main():
 
         # Train
         log_bold('TRAIN')
-        train(model, (train_images, train_labels), (test_images, test_labels), epochs)
+        ret = train(model, (train_images, train_labels), (test_images, test_labels), epochs)
+        if ret != 0:
+            return ret
+    return 0
 
 
 if __name__ == '__main__':
@@ -173,7 +185,7 @@ if __name__ == '__main__':
 
     ret = 0
     try:
-        main()
+        ret = main()
     except Exception as e:
         logger.exception('Uncaught exception: %s', e)
         ret = 1
