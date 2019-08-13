@@ -216,6 +216,12 @@ class KerasModel(InferenceModel):
         filepath = argv[0] if len(argv) == 1 else self.filepath_h5()
         assert os.path.splitext(filepath)[1] == file_utils.EXTENSION_H5
 
+        # save metadata file
+        filepath_md = filepath.replace(file_utils.EXTENSION_H5, file_utils.EXTENSION_MD)
+        ret = self.metadata.save(filepath_md)
+        if ret != 0:
+            return ret
+
         ret = 0
         try:
             self.keras_model.save(filepath, **kwargs)
@@ -229,6 +235,12 @@ class KerasModel(InferenceModel):
         assert len(argv) <= 1
         filepath = argv[0] if len(argv) == 1 else self.filepath_weights_h5()
         assert os.path.splitext(filepath)[1] == file_utils.EXTENSION_H5
+
+        # save metadata file
+        filepath_md = filepath.replace(file_utils.EXTENSION_H5_WEIGHTS, file_utils.EXTENSION_MD)
+        ret = self.metadata.save(filepath_md)
+        if ret != 0:
+            return ret
 
         ret = 0
         try:

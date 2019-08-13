@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import os
+import json
+import jsonpickle
 from src.meta.constants import UNKNOWN_EPOCH
 from src.utils import file_utils
 
@@ -22,6 +24,17 @@ class Metadata:
         self.epoch = epoch
         self.input_names = input_names
         self.output_names = output_names
+
+    def save(self, filepath):
+        assert os.path.splitext(filepath)[1] == file_utils.EXTENSION_MD
+
+        if os.path.exists(filepath):
+            logger.warn('Overwriting %s...', filepath)
+
+        with open(filepath, "wt") as f:
+            json.dump(json.loads(jsonpickle.encode(self)), f, indent=4)
+
+        return 0
 
     def update_epoch(self, epoch, prefix=None):
         if self.epoch != epoch:
