@@ -79,7 +79,9 @@ class KerasModel(InferenceModel):
     @staticmethod
     def from_weights_h5(filepath_md, f_construct_keras_model, filepath_weights_h5):
         assert os.path.splitext(filepath_md)[1] == file_utils.EXTENSION_MD
+        assert os.path.exists(filepath_md)
         assert filepath_weights_h5[-len(file_utils.EXTENSION_H5_WEIGHTS):] == file_utils.EXTENSION_H5_WEIGHTS
+        assert os.path.exists(filepath_weights_h5)
 
         # metadata
         ret, metadata = Metadata.from_md(filepath_md)
@@ -97,6 +99,26 @@ class KerasModel(InferenceModel):
 
         # KerasModel
         result = KerasModel(metadata, keras_model, f_construct_keras_model=f_construct_keras_model)
+        return 0, result
+
+    @staticmethod
+    def from_h5(filepath_md, filepath_h5):
+        assert os.path.splitext(filepath_md)[1] == file_utils.EXTENSION_MD
+        assert os.path.exists(filepath_md)
+        assert os.path.splitext(filepath_h5)[1] == file_utils.EXTENSION_H5
+        assert os.path.exists(filepath_h5)
+
+        # metadata
+        ret, metadata = Metadata.from_md(filepath_md)
+        if ret != 0:
+            return ret, None
+
+        # keras.Model
+        logger.debug('[%s|%d] Loading keras model from %s...', metadata.name, metadata.epoch, filepath_h5)
+        keras_model = keras.models.load_model(filepath_h5)
+
+        # KerasModel
+        result = KerasModel(metadata, keras_model)
         return 0, result
 
     # file dir
