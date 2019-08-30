@@ -18,7 +18,7 @@ WORKDIR ${WORKSPACE}
 RUN pip install -r requirements.txt
 
 # Add repo
-ADD . ${WORKSPACE}
+#ADD . ${WORKSPACE}
 
 # Jupyter
 RUN jupyter notebook --generate-config

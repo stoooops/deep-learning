@@ -6,6 +6,7 @@ docker run \
   --ulimit memlock=-1 \
   --ulimit stack=67108864 \
   --rm \
+  -v /space/code/deep-learning:/workspace/deep-learning \
   -p 8888:8888 \
   -it \
-  deep-learning
+  deep-learning "$@"
