@@ -29,7 +29,7 @@ loop_rsync() {
     echo "Running rsync for ${SRC} to ${DEST}"
     run_rsync "${SRC}" "${DEST}"
     echo "Watching for filesystem changes at ${SRC}"
-    inotifywait -m . -e close_write |
+    inotifywait -r -m . -e close_write |
       while read path action file; do
         echo "Running rsync for ${SRC} to ${DEST}" && run_rsync "${SRC}" "${DEST}";
     done
