@@ -9,6 +9,9 @@ RUN mkdir -p ${WORKSPACE}
 RUN ["apt-get", "update"]
 RUN ["apt-get", "install", "-y", "libsm6", "libxext6", "libxrender-dev"]
 
+# Helpful command-line libraries
+RUN ["apt-get", "install", "-y", "jq"]
+
 # Upgrade underlying pip
 RUN pip install --upgrade pip setuptools
 
