@@ -10,6 +10,7 @@ run_rsync() {
     rsync -r -a -v \
         --exclude=.DS_Store \
         --exclude=.python-version \
+        --exclude=*.swp \
         --include=tmp/.gitignore \
         --include=tmp/logs/.gitignore \
         --include=tmp/logs/tensorboard/.gitignore \
