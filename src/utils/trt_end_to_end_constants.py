@@ -2,6 +2,7 @@
 
 import os
 import json
+import shutil
 import jsonpickle
 
 
@@ -39,7 +40,16 @@ def get_train_dir(name, epoch):
 _CONVERT_DIR = os.path.join(_TRT_END_TO_END_DIR, 'convert')
 
 _CONVERT_TF_DIR = os.path.join(_CONVERT_DIR, 'tf')
-_CONVERT_TF_SAVED_GRAPH_DIR = os.path.join(_CONVERT_TF_DIR, 'saved')
+_CONVERT_TF_SAVER_DIR = os.path.join(_CONVERT_TF_DIR, 'saver')
+_CONVERT_TF_SAVED_GRAPH_DIR = os.path.join(_CONVERT_TF_DIR, 'saved_graph')
+_CONVERT_TF_FROZEN_GRAPH_DIR = os.path.join(_CONVERT_TF_DIR, 'frozen')
+
+
+def get_saver_dir(name, epoch):
+    result = os.path.join(_CONVERT_TF_SAVER_DIR, _NAME_EPOCH_DIR_FORMAT % (name, epoch))
+    if not os.path.exists(result):
+        os.makedirs(result)
+    return result
 
 
 def get_saved_graph_dir(name, epoch):
@@ -47,9 +57,6 @@ def get_saved_graph_dir(name, epoch):
     if not os.path.exists(result):
         os.makedirs(result)
     return result
-
-
-_CONVERT_TF_FROZEN_GRAPH_DIR = os.path.join(_CONVERT_TF_DIR, 'frozen')
 
 
 def get_frozen_graph_dir(name, epoch):
