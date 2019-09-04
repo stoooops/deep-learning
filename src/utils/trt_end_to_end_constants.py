@@ -20,7 +20,7 @@ SAVED_GRAPH_META_FILE_FORMAT = 'tf_model_%s_epoch%03d_%s.meta'
 FROZEN_GRAPH_FILE_FORMAT = '%s_epoch%03d_%s_frozen.pb'
 
 # TRT
-TRT_GRAPH_FILE_FORMAT = '%s_epoch%03d_%s_trt.pb'
+TRT_GRAPH_FILE_FORMAT = '%s_epoch%03d_%s_trt_%s.pb'
 
 # Dirs
 _NAME_EPOCH_DIR_FORMAT = '%s/%03d'

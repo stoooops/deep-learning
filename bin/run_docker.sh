@@ -7,6 +7,7 @@ docker run \
   --ulimit stack=67108864 \
   --rm \
   -v /space/code/deep-learning:/workspace/deep-learning \
+  -v /space/code/keras-maskrcnn:/workspace/keras-maskrcnn \
   -p 8888:8888 \
   -it \
   deep-learning "$@"
