@@ -23,6 +23,9 @@ RUN pip install -r requirements.txt
 # Add repo
 #ADD . ${WORKSPACE}
 
+ENV KERAS_MASKRCNN_DIR /workspace/keras-maskrcnn
+# RUN pip install /workspace/keras-maskrcnn
+
 # Jupyter
 RUN jupyter notebook --generate-config
 # Allow LAN access for Jupyter Notebooks
