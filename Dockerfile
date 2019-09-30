@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/tensorflow:19.07-py3
+FROM nvcr.io/nvidia/tensorflow:19.08-py3
 
 # Create workspace
 ARG WORKSPACE=/workspace/deep-learning
